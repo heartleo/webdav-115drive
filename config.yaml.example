@@ -1,0 +1,12 @@
+server:
+  addr: 0.0.0.0
+  port: 8090
+  user: root
+  pwd: 123456
+  debug: true
+drive115:
+  uid:
+  cid:
+  seid:
+  kid:
+  rate:
