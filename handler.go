@@ -4,11 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"mime"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -28,7 +26,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handlePropfind(w, r)
 	default:
 		w.Header().Set("Allow", "OPTIONS, GET, HEAD, PROPFIND")
-		http.Error(w, "method not allowed (read-only)", http.StatusMethodNotAllowed)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -55,11 +53,11 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if info.IsDir {
-		http.Error(w, "cannot GET a collection", http.StatusMethodNotAllowed)
+		http.Error(w, "bad method", http.StatusMethodNotAllowed)
 		return
 	}
 
-	rs, _, err := h.FS.Open(ctx, p)
+	_, _, err = h.FS.Open(ctx, p)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -72,13 +70,13 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Last-Modified", lastMod)
 	w.Header().Set("Accept-Ranges", "bytes")
 
-	if inm := r.Header.Get("If-None-Match"); inm != "" && strings.Contains(inm, etag) {
+	if s := r.Header.Get("If-None-Match"); s != "" && strings.Contains(s, etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 
-	if ims := r.Header.Get("If-Modified-Since"); ims != "" {
-		if t, e := time.Parse(http.TimeFormat, ims); e == nil && !info.ModTime.After(t) {
+	if s := r.Header.Get("If-Modified-Since"); s != "" {
+		if t, e := time.Parse(http.TimeFormat, s); e == nil && !info.ModTime.After(t) {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
@@ -90,46 +88,15 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
-	// If ReadSeeker is nil, use Drive115FS.ServeContent (reverse proxy)
-	if rs == nil {
-		if d115fs, ok := h.FS.(*Drive115FS); ok {
-			if err := d115fs.ServeContent(w, r, info); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			return
+	if d115fs, ok := h.FS.(*Drive115); ok {
+		if err := d115fs.ServeContent(w, r, info); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		http.Error(w, "file not readable", http.StatusInternalServerError)
 		return
 	}
 
-	if c, ok := rs.(io.Closer); ok {
-		defer func() { _ = c.Close() }()
-	}
-
-	if rng := r.Header.Get("Range"); rng != "" {
-		if ok, start, end := parseRange(rng, info.Size); ok {
-			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, info.Size))
-			w.Header().Set("Content-Length", strconv.FormatInt(end-start+1, 10))
-			w.WriteHeader(http.StatusPartialContent)
-			if r.Method == http.MethodGet {
-				_, _ = rs.Seek(start, io.SeekStart)
-				_, _ = io.CopyN(w, rs, end-start+1)
-			}
-			return
-		}
-		w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", info.Size))
-		http.Error(w, "range not satisfiable", http.StatusRequestedRangeNotSatisfiable)
-		return
-	}
-
-	w.Header().Set("Content-Length", strconv.FormatInt(info.Size, 10))
-	if r.Method == http.MethodHead {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, rs)
+	http.Error(w, "file not readable", http.StatusInternalServerError)
+	return
 }
 
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
@@ -221,32 +188,40 @@ func quoteETag(s string) string {
 
 func (h *Handler) cleanPath(urlPath string) (string, bool) {
 	p := urlPath
+
 	if h.BasePath != "" {
 		if !strings.HasPrefix(p, h.BasePath) {
 			return "", false
 		}
 		p = strings.TrimPrefix(p, h.BasePath)
 	}
+
 	if p == "" {
 		p = "/"
 	}
+
 	cp := path.Clean("/" + p)
+
 	if strings.Contains(cp, "..") {
 		return "", false
 	}
+
 	return cp, true
 }
 
 func (h *Handler) toHref(r *http.Request, p string, isDir bool) string {
 	href := p
+
 	if h.BasePath != "" {
 		href = path.Join(h.BasePath, p)
 		if !strings.HasPrefix(href, "/") {
 			href = "/" + href
 		}
 	}
+
 	if isDir && !strings.HasSuffix(href, "/") {
 		href += "/"
 	}
+
 	return href
 }
