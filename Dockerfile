@@ -16,6 +16,6 @@ FROM alpine:3.22
 
 WORKDIR /
 
-COPY --from=builder /webdav .
+COPY --from=builder /webdav-115drive .
 
-CMD ["/webdav"]
+CMD ["/webdav-115drive"]

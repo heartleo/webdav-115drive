@@ -29,13 +29,13 @@ func main() {
 
 	conf, err := LoadConfig(*configPath)
 	if err != nil {
-		slog.Error("failed to load config", slog.Any("error", err))
+		slog.Error("load config failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	fs, err := NewDrive(conf.Drive)
 	if err != nil {
-		slog.Error("failed to create drive115 fs", slog.Any("error", err))
+		slog.Error("create drive failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 

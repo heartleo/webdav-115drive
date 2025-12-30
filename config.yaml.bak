@@ -1,0 +1,12 @@
+server:
+  addr: 0.0.0.0
+  port: 8090
+  user: root
+  pwd: 123456
+  debug: true
+drive:
+  uid: 102198610_A1_1767059341
+  cid: df0b2b4e5a8ec8b54b3668f4dbd910ef
+  seid: f235a6da2d3262ea2e122d1eb7de368d8b1ca9c6caf8f7411e4fa1a9c483a31404a7142c06f5da5fc31b384e1218c200e5084dce7b151636c54f9953
+  kid: 858f63170c2b2d43a4c3d995b6032731
+  rate: 3

@@ -1,0 +1,18 @@
+networks:
+  webdav-115drive:
+    name: webdav-115drive
+
+services:
+  webdav:
+    container_name: webdav-115drive
+    image: "heartleo/webdav-115drive"
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    networks:
+      - webdav-115drive
+    env_file:
+      - .env
+    restart: unless-stopped

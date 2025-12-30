@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/SheltonZhu/115driver/pkg/driver"
@@ -26,7 +25,6 @@ type Drive struct {
 	reverseProxy *httputil.ReverseProxy
 	limiter      *rate.Limiter
 	cache        *cache.Cache
-	mu           sync.RWMutex
 }
 
 type jarTransport struct {
@@ -60,6 +58,7 @@ func NewDrive(conf DriveConfig) (*Drive, error) {
 		SetUserAgent(driver.UA115Browser).ImportCredential(credential)
 
 	if err := client.LoginCheck(); err != nil {
+		fmt.Println(credential)
 		return nil, fmt.Errorf("drive login failed: %w", err)
 	}
 
@@ -86,29 +85,19 @@ func NewDrive(conf DriveConfig) (*Drive, error) {
 		},
 	}
 
+	expire := time.Duration(conf.CacheExpire) * time.Minute
+	if expire <= 0 {
+		expire = 5 * time.Minute
+	}
+
 	fs := &Drive{
 		client:       client,
 		reverseProxy: reverseProxy,
 		limiter:      rate.NewLimiter(rate.Every(time.Second), conf.Rate),
-		cache:        cache.New(1*time.Minute, 5*time.Minute),
+		cache:        cache.New(expire, expire*2),
 	}
 
 	return fs, nil
-}
-
-func (d *Drive) wait(ctx context.Context) error {
-	if d.limiter == nil {
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	if err := d.limiter.Wait(ctx); err != nil {
-		return errors.New("rate limit exceeded")
-	}
-
-	return nil
 }
 
 func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
@@ -140,57 +129,46 @@ func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
 
 func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
 	p = cleanPath(p)
-	cacheKey := "dir:" + p
 
-	d.mu.RLock()
-	if cached, ok := d.cache.Get(cacheKey); ok {
-		d.mu.RUnlock()
-		return cached.([]*Info), nil
-	}
-	d.mu.RUnlock()
+	result, err := d.fetchCache(ctx, d.cacheKeyDir(p), func() (any, error) {
+		dirID := "0"
 
-	if err := d.wait(ctx); err != nil {
-		return nil, err
-	}
+		if dirResp, err := d.client.DirName2CID(p); err == nil {
+			dirID = string(dirResp.CategoryID)
+		}
 
-	var dirID string
+		var files *[]driver.File
 
-	dirResp, err := d.client.DirName2CID(p)
-	if err == nil {
-		dirID = string(dirResp.CategoryID)
-	}
-
-	if dirID == "" {
-		dirID = "0"
-	}
-
-	if err := d.wait(ctx); err != nil {
-		return nil, err
-	}
-
-	files, err := d.client.List(dirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list files: %w", err)
-	}
-
-	infos := make([]*Info, 0, len(*files))
-	for _, f := range *files {
-		infos = append(infos, &Info{
-			Path:     path.Join(p, f.Name),
-			Name:     f.Name,
-			IsDir:    f.IsDirectory,
-			Size:     f.Size,
-			ModTime:  f.UpdateTime,
-			ETag:     f.Sha1,
-			PickCode: f.PickCode,
+		err := d.checkRateLimit(ctx, func() error {
+			var e error
+			files, e = d.client.List(dirID)
+			return e
 		})
+		if err != nil {
+			return nil, fmt.Errorf("list files failed: %w", err)
+		}
+
+		infos := make([]*Info, 0, len(*files))
+
+		for _, f := range *files {
+			infos = append(infos, &Info{
+				Path:     path.Join(p, f.Name),
+				Name:     f.Name,
+				IsDir:    f.IsDirectory,
+				Size:     f.Size,
+				ModTime:  f.UpdateTime,
+				ETag:     f.Sha1,
+				PickCode: f.PickCode,
+			})
+		}
+
+		return infos, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	d.mu.Lock()
-	d.cache.Set(cacheKey, infos, cache.DefaultExpiration)
-	d.mu.Unlock()
-
-	return infos, nil
+	return result.([]*Info), nil
 }
 
 func (d *Drive) Open(ctx context.Context, p string) (io.ReadSeeker, *Info, error) {
@@ -202,41 +180,24 @@ func (d *Drive) Open(ctx context.Context, p string) (io.ReadSeeker, *Info, error
 }
 
 func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info) error {
-	ctx := r.Context()
-
 	if info.PickCode == "" {
 		return errors.New("pick code not found")
 	}
 
-	cacheKey := "download:" + info.PickCode
-
-	var downloadURL string
-	if cached, ok := d.cache.Get(cacheKey); ok {
-		downloadURL = cached.(string)
-	} else {
-		if err := d.wait(ctx); err != nil {
-			return err
-		}
-
+	result, err := d.fetchCache(r.Context(), d.cacheKeyDownload(info.PickCode), func() (any, error) {
 		downloadInfo, err := d.client.Download(info.PickCode)
 		if err != nil {
-			return fmt.Errorf("failed to get download info: %w", err)
+			return nil, fmt.Errorf("failed to get download info: %w", err)
 		}
-
-		downloadURL = downloadInfo.Url.Url
-		d.cache.Set(cacheKey, downloadURL, cache.DefaultExpiration)
+		return downloadInfo.Url.Url, nil
+	})
+	if err != nil {
+		return err
 	}
 
-	du, err := url.Parse(downloadURL)
+	du, err := url.Parse(result.(string))
 	if err != nil {
 		return fmt.Errorf("invalid download URL: %w", err)
-	}
-
-	r.URL = du
-	r.Host = du.Host
-
-	if err := d.wait(ctx); err != nil {
-		return err
 	}
 
 	slog.Debug("serving content",
@@ -246,6 +207,8 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 		slog.String("url", du.String()),
 	)
 
+	r.URL = du
+	r.Host = du.Host
 	d.reverseProxy.ServeHTTP(w, r)
 
 	return nil

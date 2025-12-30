@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -21,11 +22,12 @@ type ServerConfig struct {
 }
 
 type DriveConfig struct {
-	UID  string `yaml:"uid"`
-	CID  string `yaml:"cid"`
-	SEID string `yaml:"seid"`
-	KID  string `yaml:"kid"`
-	Rate int    `yaml:"rate"`
+	UID         string `yaml:"uid"`
+	CID         string `yaml:"cid"`
+	SEID        string `yaml:"seid"`
+	KID         string `yaml:"kid"`
+	Rate        int    `yaml:"rate"`
+	CacheExpire int    `yaml:"cache_expire"`
 }
 
 type Config struct {
@@ -62,6 +64,20 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
+	_ = viper.BindEnv("server.addr")
+	_ = viper.BindEnv("server.port")
+	_ = viper.BindEnv("server.prefix")
+	_ = viper.BindEnv("server.debug")
+	_ = viper.BindEnv("server.user")
+	_ = viper.BindEnv("server.pwd")
+
+	_ = viper.BindEnv("drive.uid")
+	_ = viper.BindEnv("drive.cid")
+	_ = viper.BindEnv("drive.seid")
+	_ = viper.BindEnv("drive.kid")
+	_ = viper.BindEnv("drive.rate")
+	_ = viper.BindEnv("drive.cache_expire")
+
 	if err = viper.ReadInConfig(); err != nil {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			return nil, err
@@ -70,9 +86,14 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	conf := &Config{}
 
-	if err = viper.Unmarshal(conf); err != nil {
+	fmt.Println("viper drive.uid =", viper.Get("drive.uid"))
+	fmt.Println("DRIVE_UID:", os.Getenv("DRIVE_UID"))
+
+	if err := viper.Unmarshal(conf); err != nil {
 		return nil, err
 	}
+
+	fmt.Println(conf)
 
 	return conf, nil
 }
