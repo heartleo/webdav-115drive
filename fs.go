@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/heartleo/webdav-115drive/drive"
+	"github.com/SheltonZhu/115driver/pkg/driver"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/time/rate"
 )
@@ -36,28 +36,46 @@ type Info struct {
 }
 
 type Drive115FS struct {
-	client       *drive.Client
+	client       *driver.Pan115Client
 	reverseProxy *httputil.ReverseProxy
 	limiter      *rate.Limiter
 	cache        *cache.Cache
 	mu           sync.RWMutex
 }
 
+const UA = "Mozilla/5.0 115Browser/23.9.3.2"
+
 func NewDrive115FS(conf Drive115Config) (*Drive115FS, error) {
-	client, err := drive.New(conf.UID, conf.CID, conf.SEID, conf.KID)
-	if err != nil {
+
+	cr := &driver.Credential{
+		UID:  conf.UID,
+		CID:  conf.CID,
+		SEID: conf.SEID,
+		KID:  conf.KID,
+	}
+
+	client := driver.Default().SetUserAgent(UA).ImportCredential(cr)
+	if err := client.LoginCheck(); err != nil {
 		return nil, fmt.Errorf("create 115 drive failed: %w", err)
 	}
 
 	reverseProxy := &httputil.ReverseProxy{
-		Transport: client.HttpClient().Transport,
+		Transport: client.Client.GetClient().Transport,
 		Director: func(req *http.Request) {
-			req.Header.Set("Referer", drive.Referer)
-			req.Header.Set(drive.UAKey, drive.UA115Browser)
+			req.Header.Set("Referer", "https://115.com/")
+			req.Header.Set("User-Agent", UA)
 			req.Header.Set("Host", req.Host)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			slog.Warn("reverse proxy failed", slog.Any("error", err), slog.String("url", r.URL.String()))
+		},
+		ModifyResponse: func(response *http.Response) error {
+			if response.StatusCode >= http.StatusBadRequest {
+				b, _ := io.ReadAll(response.Body)
+				slog.Warn("reverse proxy failed", slog.Any("status", response.Status),
+					slog.Any("message", string(b)))
+			}
+			return nil
 		},
 	}
 
@@ -125,26 +143,32 @@ func (d *Drive115FS) ReadDir(ctx context.Context, p string) ([]Info, error) {
 		return nil, err
 	}
 
-	dirID, err := d.client.DirID(p)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get dir ID: %w", err)
+	var dirID string
+
+	dirResp, err := d.client.DirName2CID(p)
+	if err == nil {
+		dirID = string(dirResp.CategoryID)
+	}
+
+	if dirID == "" {
+		dirID = "0"
 	}
 
 	if err := d.waitLimit(ctx); err != nil {
 		return nil, err
 	}
 
-	files, err := d.client.FileList(dirID)
+	files, err := d.client.List(dirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files: %w", err)
 	}
 
-	infos := make([]Info, 0, len(files))
-	for _, f := range files {
+	infos := make([]Info, 0, len(*files))
+	for _, f := range *files {
 		infos = append(infos, Info{
 			Path:     path.Join(p, f.Name),
 			Name:     f.Name,
-			IsDir:    f.IsDir,
+			IsDir:    f.IsDirectory,
 			Size:     f.Size,
 			ModTime:  f.UpdateTime,
 			ETag:     f.Sha1,
@@ -184,7 +208,7 @@ func (d *Drive115FS) ServeContent(w http.ResponseWriter, r *http.Request, info I
 			return err
 		}
 
-		downloadInfo, err := d.client.DownloadInfo(info.PickCode)
+		downloadInfo, err := d.client.Download(info.PickCode)
 		if err != nil {
 			return fmt.Errorf("failed to get download info: %w", err)
 		}
@@ -201,10 +225,15 @@ func (d *Drive115FS) ServeContent(w http.ResponseWriter, r *http.Request, info I
 	r.URL = du
 	r.Host = du.Host
 
+	if err := d.waitLimit(ctx); err != nil {
+		return err
+	}
+
 	slog.Debug("serving content",
 		slog.String("name", info.Name),
 		slog.String("pickCode", info.PickCode),
 		slog.String("range", r.Header.Get("Range")),
+		slog.String("url", du.String()),
 	)
 
 	d.reverseProxy.ServeHTTP(w, r)

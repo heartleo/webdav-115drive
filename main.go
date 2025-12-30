@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log/slog"
 	"net/http"
@@ -8,6 +9,14 @@ import (
 	"strings"
 	"time"
 )
+
+func init() {
+	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelDebug,
+	}))
+	slog.SetDefault(l)
+}
 
 func main() {
 	var (
@@ -51,7 +60,7 @@ func main() {
 		slog.String("base", h.BasePath),
 	)
 
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("server error", slog.Any("error", err))
 		os.Exit(1)
 	}

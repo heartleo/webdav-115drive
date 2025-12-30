@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-// parseRange parses HTTP Range header value.
-// Returns (ok, start, end) where ok indicates if the range is valid.
 func parseRange(v string, size int64) (ok bool, start, end int64) {
 	if !strings.HasPrefix(v, "bytes=") {
 		return false, 0, 0
