@@ -18,23 +18,22 @@ func init() {
 	slog.SetDefault(l)
 }
 
+var (
+	listen     = flag.String("listen", ":8090", "listen address")
+	basePath   = flag.String("tripper", "/dav", "url tripper path (e.g. /dav)")
+	configPath = flag.String("config", "./", "config file path")
+)
+
 func main() {
-	var (
-		listen     = flag.String("listen", ":8090", "listen address")
-		basePath   = flag.String("base", "/dav", "url base path (e.g. /dav)")
-		configPath = flag.String("config", "./", "config file path (optional)")
-	)
 	flag.Parse()
 
-	// Load config
 	conf, err := LoadConfig(*configPath)
 	if err != nil {
 		slog.Error("failed to load config", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	// Create 115 drive file system
-	fs, err := NewDrive115FS(conf.Drive115)
+	fs, err := NewDrive(conf.Drive)
 	if err != nil {
 		slog.Error("failed to create drive115 fs", slog.Any("error", err))
 		os.Exit(1)
@@ -55,13 +54,13 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	slog.Info("115 WebDAV server starting",
+	slog.Info("WebDAV server starting",
 		slog.String("listen", *listen),
-		slog.String("base", h.BasePath),
+		slog.String("tripper", h.BasePath),
 	)
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("server error", slog.Any("error", err))
+		slog.Error("serve failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 }

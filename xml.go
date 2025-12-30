@@ -9,7 +9,7 @@ const (
 	xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>`
 )
 
-type multistatus struct {
+type multiStatus struct {
 	XMLName  xml.Name      `xml:"d:multistatus"`
 	XmlnsD   string        `xml:"xmlns:d,attr"`
 	Response []davResponse `xml:"d:response"`
@@ -17,10 +17,10 @@ type multistatus struct {
 
 type davResponse struct {
 	Href     string   `xml:"d:href"`
-	Propstat propstat `xml:"d:propstat"`
+	Propstat propStat `xml:"d:propstat"`
 }
 
-type propstat struct {
+type propStat struct {
 	Prop   prop   `xml:"d:prop"`
 	Status string `xml:"d:status"`
 }
@@ -30,10 +30,10 @@ type prop struct {
 	ContentLength string        `xml:"d:getcontentlength,omitempty"`
 	LastMod       string        `xml:"d:getlastmodified,omitempty"`
 	GetETag       string        `xml:"d:getetag,omitempty"`
-	ResourceType  *resourcetype `xml:"d:resourcetype,omitempty"`
+	ResourceType  *resourceType `xml:"d:resourcetype,omitempty"`
 }
 
-type resourcetype struct {
+type resourceType struct {
 	Collection *struct{} `xml:"d:collection,omitempty"`
 }
 

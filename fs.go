@@ -7,9 +7,9 @@ import (
 )
 
 type FS interface {
-	Stat(ctx context.Context, p string) (Info, error)
-	ReadDir(ctx context.Context, p string) ([]Info, error)
-	Open(ctx context.Context, p string) (io.ReadSeeker, Info, error)
+	Stat(ctx context.Context, p string) (*Info, error)
+	ReadDir(ctx context.Context, p string) ([]*Info, error)
+	Open(ctx context.Context, p string) (io.ReadSeeker, *Info, error)
 }
 
 type Info struct {

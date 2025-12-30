@@ -21,7 +21,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type Drive115 struct {
+type Drive struct {
 	client       *driver.Pan115Client
 	reverseProxy *httputil.ReverseProxy
 	limiter      *rate.Limiter
@@ -29,22 +29,20 @@ type Drive115 struct {
 	mu           sync.RWMutex
 }
 
-const Referer = "https://115.com/"
-
 type jarTransport struct {
-	base http.RoundTripper
-	jar  http.CookieJar
+	tripper http.RoundTripper
+	jar     http.CookieJar
 }
 
 func (t *jarTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	for _, c := range t.jar.Cookies(req.URL) {
-		req.AddCookie(c)
+	for _, v := range t.jar.Cookies(req.URL) {
+		req.AddCookie(v)
 	}
-	return t.base.RoundTrip(req)
+	return t.tripper.RoundTrip(req)
 }
 
-func NewDrive115FS(conf Drive115Config) (*Drive115, error) {
-	cr := &driver.Credential{
+func NewDrive(conf DriveConfig) (*Drive, error) {
+	credential := &driver.Credential{
 		UID:  conf.UID,
 		CID:  conf.CID,
 		SEID: conf.SEID,
@@ -56,22 +54,22 @@ func NewDrive115FS(conf Drive115Config) (*Drive115, error) {
 		return nil, err
 	}
 
-	rc := resty.New()
-	rc.SetCookieJar(jar)
+	restyClient := resty.New().SetCookieJar(jar)
 
-	client := driver.New(driver.WithRestyClient(rc)).
-		SetUserAgent(driver.UA115Browser).ImportCredential(cr)
-	if err = client.LoginCheck(); err != nil {
-		return nil, fmt.Errorf("create 115 drive failed: %w", err)
+	client := driver.New(driver.WithRestyClient(restyClient)).
+		SetUserAgent(driver.UA115Browser).ImportCredential(credential)
+
+	if err := client.LoginCheck(); err != nil {
+		return nil, fmt.Errorf("drive login failed: %w", err)
 	}
 
 	reverseProxy := &httputil.ReverseProxy{
 		Transport: &jarTransport{
-			base: rc.GetClient().Transport,
-			jar:  jar,
+			tripper: restyClient.GetClient().Transport,
+			jar:     jar,
 		},
 		Director: func(req *http.Request) {
-			req.Header.Set("Referer", Referer)
+			req.Header.Set("Referer", driver.CookieUrl)
 			req.Header.Set("User-Agent", driver.UA115Browser)
 			req.Header.Set("Host", req.Host)
 		},
@@ -88,7 +86,7 @@ func NewDrive115FS(conf Drive115Config) (*Drive115, error) {
 		},
 	}
 
-	fs := &Drive115{
+	fs := &Drive{
 		client:       client,
 		reverseProxy: reverseProxy,
 		limiter:      rate.NewLimiter(rate.Every(time.Second), conf.Rate),
@@ -98,7 +96,7 @@ func NewDrive115FS(conf Drive115Config) (*Drive115, error) {
 	return fs, nil
 }
 
-func (d *Drive115) wait(ctx context.Context) error {
+func (d *Drive) wait(ctx context.Context) error {
 	if d.limiter == nil {
 		return nil
 	}
@@ -113,10 +111,10 @@ func (d *Drive115) wait(ctx context.Context) error {
 	return nil
 }
 
-func (d *Drive115) Stat(ctx context.Context, p string) (Info, error) {
+func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
 	p = cleanPath(p)
 	if p == "/" {
-		return Info{
+		return &Info{
 			Path:    "/",
 			Name:    "/",
 			IsDir:   true,
@@ -128,7 +126,7 @@ func (d *Drive115) Stat(ctx context.Context, p string) (Info, error) {
 
 	files, err := d.ReadDir(ctx, dir)
 	if err != nil {
-		return Info{}, err
+		return nil, err
 	}
 
 	for _, f := range files {
@@ -137,17 +135,17 @@ func (d *Drive115) Stat(ctx context.Context, p string) (Info, error) {
 		}
 	}
 
-	return Info{}, errors.New("file not found")
+	return nil, errors.New("file not found")
 }
 
-func (d *Drive115) ReadDir(ctx context.Context, p string) ([]Info, error) {
+func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
 	p = cleanPath(p)
 	cacheKey := "dir:" + p
 
 	d.mu.RLock()
 	if cached, ok := d.cache.Get(cacheKey); ok {
 		d.mu.RUnlock()
-		return cached.([]Info), nil
+		return cached.([]*Info), nil
 	}
 	d.mu.RUnlock()
 
@@ -175,9 +173,9 @@ func (d *Drive115) ReadDir(ctx context.Context, p string) ([]Info, error) {
 		return nil, fmt.Errorf("failed to list files: %w", err)
 	}
 
-	infos := make([]Info, 0, len(*files))
+	infos := make([]*Info, 0, len(*files))
 	for _, f := range *files {
-		infos = append(infos, Info{
+		infos = append(infos, &Info{
 			Path:     path.Join(p, f.Name),
 			Name:     f.Name,
 			IsDir:    f.IsDirectory,
@@ -195,15 +193,15 @@ func (d *Drive115) ReadDir(ctx context.Context, p string) ([]Info, error) {
 	return infos, nil
 }
 
-func (d *Drive115) Open(ctx context.Context, p string) (io.ReadSeeker, Info, error) {
+func (d *Drive) Open(ctx context.Context, p string) (io.ReadSeeker, *Info, error) {
 	info, err := d.Stat(ctx, p)
 	if err != nil {
-		return nil, Info{}, err
+		return nil, nil, err
 	}
 	return nil, info, nil
 }
 
-func (d *Drive115) ServeContent(w http.ResponseWriter, r *http.Request, info Info) error {
+func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info) error {
 	ctx := r.Context()
 
 	if info.PickCode == "" {

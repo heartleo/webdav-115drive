@@ -88,19 +88,21 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
-	if d115fs, ok := h.FS.(*Drive115); ok {
-		if err := d115fs.ServeContent(w, r, info); err != nil {
+	if drive, ok := h.FS.(*Drive); ok {
+		if err := drive.ServeContent(w, r, info); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
 	http.Error(w, "file not readable", http.StatusInternalServerError)
+
 	return
 }
 
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
 	p, ok := h.cleanPath(r.URL.Path)
 	if !ok {
 		http.Error(w, "bad path", http.StatusBadRequest)
@@ -111,8 +113,9 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	if depth == "" {
 		depth = "1"
 	}
+
 	if depth != "0" && depth != "1" {
-		http.Error(w, "Depth not supported", http.StatusForbidden)
+		http.Error(w, "bad depth", http.StatusForbidden)
 		return
 	}
 
@@ -122,21 +125,23 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var children []Info
+	var children []*Info
+
 	if root.IsDir && depth == "1" {
 		children, err = h.FS.ReadDir(ctx, p)
 		if err != nil {
-			http.Error(w, "failed to read directory", http.StatusInternalServerError)
+			http.Error(w, "read dir failed", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	responses := []davResponse{h.makeResponse(r, root)}
-	for _, c := range children {
-		responses = append(responses, h.makeResponse(r, c))
+	responses := []davResponse{h.makeResponse(root)}
+
+	for _, v := range children {
+		responses = append(responses, h.makeResponse(v))
 	}
 
-	ms := multistatus{
+	ms := multiStatus{
 		XmlnsD:   "DAV:",
 		Response: responses,
 	}
@@ -147,8 +152,8 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	_ = xmlEncoder(w).Encode(ms)
 }
 
-func (h *Handler) makeResponse(r *http.Request, info Info) davResponse {
-	href := h.toHref(r, info.Path, info.IsDir)
+func (h *Handler) makeResponse(info *Info) davResponse {
+	href := h.toHref(info.Path, info.IsDir)
 	etag := h.ensureETag(info)
 
 	props := prop{
@@ -156,26 +161,30 @@ func (h *Handler) makeResponse(r *http.Request, info Info) davResponse {
 		GetETag:     etag,
 		LastMod:     info.ModTime.UTC().Format(http.TimeFormat),
 	}
+
 	if info.IsDir {
-		props.ResourceType = &resourcetype{Collection: &struct{}{}}
+		props.ResourceType = &resourceType{Collection: &struct{}{}}
 	} else {
 		props.ContentLength = fmt.Sprintf("%d", info.Size)
-		props.ResourceType = &resourcetype{}
+		props.ResourceType = &resourceType{}
 	}
+
 	return davResponse{
 		Href: href,
-		Propstat: propstat{
+		Propstat: propStat{
 			Prop:   props,
 			Status: "HTTP/1.1 200 OK",
 		},
 	}
 }
 
-func (h *Handler) ensureETag(info Info) string {
+func (h *Handler) ensureETag(info *Info) string {
 	if info.ETag != "" {
 		return quoteETag(info.ETag)
 	}
+
 	sum := sha1.Sum([]byte(fmt.Sprintf("%d:%d", info.Size, info.ModTime.UnixNano())))
+
 	return quoteETag(hex.EncodeToString(sum[:]))
 }
 
@@ -209,7 +218,7 @@ func (h *Handler) cleanPath(urlPath string) (string, bool) {
 	return cp, true
 }
 
-func (h *Handler) toHref(r *http.Request, p string, isDir bool) string {
+func (h *Handler) toHref(p string, isDir bool) string {
 	href := p
 
 	if h.BasePath != "" {

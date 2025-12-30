@@ -4,7 +4,7 @@ server:
   user: root
   pwd: 123456
   debug: true
-drive115:
+drive:
   uid:
   cid:
   seid:

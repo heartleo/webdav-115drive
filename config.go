@@ -20,7 +20,7 @@ type ServerConfig struct {
 	Pwd    string `yaml:"pwd"`
 }
 
-type Drive115Config struct {
+type DriveConfig struct {
 	UID  string `yaml:"uid"`
 	CID  string `yaml:"cid"`
 	SEID string `yaml:"seid"`
@@ -29,8 +29,8 @@ type Drive115Config struct {
 }
 
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Drive115 Drive115Config `yaml:"drive115"`
+	Server ServerConfig `yaml:"server"`
+	Drive  DriveConfig  `yaml:"drive"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {
@@ -55,7 +55,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.SetConfigType("yaml")
 
 	viper.SetDefault("server.addr", "0.0.0.0")
-	viper.SetDefault("server.port", 8228)
+	viper.SetDefault("server.port", 8090)
 	viper.SetDefault("server.prefix", "/dav")
 	viper.SetDefault("server.debug", false)
 
