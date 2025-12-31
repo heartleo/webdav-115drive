@@ -20,7 +20,7 @@ func init() {
 
 var (
 	listen     = flag.String("listen", ":8090", "listen address")
-	basePath   = flag.String("tripper", "/dav", "url tripper path (e.g. /dav)")
+	basePath   = flag.String("path", "/dav", "webdav path")
 	configPath = flag.String("config", "./", "config file path")
 )
 
@@ -54,9 +54,9 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	slog.Info("WebDAV server starting",
+	slog.Info("WebDAV server running",
 		slog.String("listen", *listen),
-		slog.String("tripper", h.BasePath),
+		slog.String("path", h.BasePath),
 	)
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
