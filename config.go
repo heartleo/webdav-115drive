@@ -77,6 +77,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.SetDefault("server.debug", false)
 	viper.SetDefault("server.user", "root")
 	viper.SetDefault("server.pwd", "123456")
+	viper.SetDefault("drive.rate", 3)
 	viper.SetDefault("drive.cache_expire", 1)
 
 	viper.AutomaticEnv()
