@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -35,6 +34,22 @@ type Config struct {
 	Drive  DriveConfig  `yaml:"drive"`
 }
 
+func bindEnvs() {
+	_ = viper.BindEnv("server.addr")
+	_ = viper.BindEnv("server.port")
+	_ = viper.BindEnv("server.prefix")
+	_ = viper.BindEnv("server.debug")
+	_ = viper.BindEnv("server.user")
+	_ = viper.BindEnv("server.pwd")
+
+	_ = viper.BindEnv("drive.uid")
+	_ = viper.BindEnv("drive.cid")
+	_ = viper.BindEnv("drive.seid")
+	_ = viper.BindEnv("drive.kid")
+	_ = viper.BindEnv("drive.rate")
+	_ = viper.BindEnv("drive.cache_expire")
+}
+
 func LoadConfig(configPath string) (*Config, error) {
 	var err error
 
@@ -60,23 +75,14 @@ func LoadConfig(configPath string) (*Config, error) {
 	viper.SetDefault("server.port", 8090)
 	viper.SetDefault("server.prefix", "/dav")
 	viper.SetDefault("server.debug", false)
+	viper.SetDefault("server.user", "root")
+	viper.SetDefault("server.pwd", "123456")
+	viper.SetDefault("drive.cache_expire", 1)
 
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	_ = viper.BindEnv("server.addr")
-	_ = viper.BindEnv("server.port")
-	_ = viper.BindEnv("server.prefix")
-	_ = viper.BindEnv("server.debug")
-	_ = viper.BindEnv("server.user")
-	_ = viper.BindEnv("server.pwd")
-
-	_ = viper.BindEnv("drive.uid")
-	_ = viper.BindEnv("drive.cid")
-	_ = viper.BindEnv("drive.seid")
-	_ = viper.BindEnv("drive.kid")
-	_ = viper.BindEnv("drive.rate")
-	_ = viper.BindEnv("drive.cache_expire")
+	bindEnvs()
 
 	if err = viper.ReadInConfig(); err != nil {
 		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
@@ -86,14 +92,9 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	conf := &Config{}
 
-	fmt.Println("viper drive.uid =", viper.Get("drive.uid"))
-	fmt.Println("DRIVE_UID:", os.Getenv("DRIVE_UID"))
-
 	if err := viper.Unmarshal(conf); err != nil {
 		return nil, err
 	}
-
-	fmt.Println(conf)
 
 	return conf, nil
 }

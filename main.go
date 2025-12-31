@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fs, err := NewDrive(conf.Drive)
+	fs, err := NewDrive(&conf.Drive)
 	if err != nil {
 		slog.Error("create drive failed", slog.Any("error", err))
 		os.Exit(1)

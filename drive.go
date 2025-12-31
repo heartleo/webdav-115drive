@@ -21,6 +21,7 @@ import (
 )
 
 type Drive struct {
+	conf         *DriveConfig
 	client       *driver.Pan115Client
 	reverseProxy *httputil.ReverseProxy
 	limiter      *rate.Limiter
@@ -39,7 +40,7 @@ func (t *jarTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.tripper.RoundTrip(req)
 }
 
-func NewDrive(conf DriveConfig) (*Drive, error) {
+func NewDrive(conf *DriveConfig) (*Drive, error) {
 	credential := &driver.Credential{
 		UID:  conf.UID,
 		CID:  conf.CID,
@@ -58,7 +59,6 @@ func NewDrive(conf DriveConfig) (*Drive, error) {
 		SetUserAgent(driver.UA115Browser).ImportCredential(credential)
 
 	if err := client.LoginCheck(); err != nil {
-		fmt.Println(credential)
 		return nil, fmt.Errorf("drive login failed: %w", err)
 	}
 
@@ -79,18 +79,16 @@ func NewDrive(conf DriveConfig) (*Drive, error) {
 			if response.StatusCode >= http.StatusBadRequest {
 				b, _ := io.ReadAll(response.Body)
 				slog.Warn("reverse proxy failed", slog.Any("status", response.Status),
-					slog.Any("message", string(b)))
+					slog.Any("body", string(b)))
 			}
 			return nil
 		},
 	}
 
 	expire := time.Duration(conf.CacheExpire) * time.Minute
-	if expire <= 0 {
-		expire = 5 * time.Minute
-	}
 
 	fs := &Drive{
+		conf:         conf,
 		client:       client,
 		reverseProxy: reverseProxy,
 		limiter:      rate.NewLimiter(rate.Every(time.Second), conf.Rate),
@@ -101,7 +99,7 @@ func NewDrive(conf DriveConfig) (*Drive, error) {
 }
 
 func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
-	p = cleanPath(p)
+	p = path.Join("/", p)
 	if p == "/" {
 		return &Info{
 			Path:    "/",
@@ -128,7 +126,7 @@ func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
 }
 
 func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
-	p = cleanPath(p)
+	p = path.Join("/", p)
 
 	result, err := d.fetchCache(ctx, d.cacheKeyDir(p), func() (any, error) {
 		dirID := "0"
@@ -212,11 +210,4 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 	d.reverseProxy.ServeHTTP(w, r)
 
 	return nil
-}
-
-func cleanPath(p string) string {
-	if p == "" || p[0] != '/' {
-		p = "/" + p
-	}
-	return path.Clean(p)
 }

@@ -57,12 +57,6 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _, err = h.FS.Open(ctx, p)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-
 	etag := h.ensureETag(info)
 	lastMod := info.ModTime.UTC().Format(http.TimeFormat)
 
@@ -196,39 +190,20 @@ func quoteETag(s string) string {
 }
 
 func (h *Handler) cleanPath(urlPath string) (string, bool) {
-	p := urlPath
-
 	if h.BasePath != "" {
-		if !strings.HasPrefix(p, h.BasePath) {
+		if !strings.HasPrefix(urlPath, h.BasePath) {
 			return "", false
 		}
-		p = strings.TrimPrefix(p, h.BasePath)
+		urlPath = strings.TrimPrefix(urlPath, h.BasePath)
 	}
 
-	if p == "" {
-		p = "/"
-	}
-
-	cp := path.Clean("/" + p)
-
-	if strings.Contains(cp, "..") {
-		return "", false
-	}
-
-	return cp, true
+	return path.Join("/", urlPath), true
 }
 
 func (h *Handler) toHref(p string, isDir bool) string {
-	href := p
+	href := path.Join("/", h.BasePath, p)
 
-	if h.BasePath != "" {
-		href = path.Join(h.BasePath, p)
-		if !strings.HasPrefix(href, "/") {
-			href = "/" + href
-		}
-	}
-
-	if isDir && !strings.HasSuffix(href, "/") {
+	if isDir && href != "/" {
 		href += "/"
 	}
 

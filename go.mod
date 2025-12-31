@@ -5,7 +5,6 @@ go 1.24.11
 require (
 	github.com/SheltonZhu/115driver v1.2.0
 	github.com/go-resty/resty/v2 v2.17.1
-	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/spf13/viper v1.21.0
@@ -17,6 +16,7 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible // indirect
 	github.com/andreburgaud/crypt2go v1.8.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.23 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
