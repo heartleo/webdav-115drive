@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"mime"
 	"net/http"
 	"path"
@@ -27,6 +28,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Set("Allow", "OPTIONS, GET, HEAD, PROPFIND")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		slog.Error("method not allowed", slog.String("method", r.Method), slog.String("path", r.URL.Path))
 	}
 }
 
@@ -42,18 +44,21 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 
 	p, ok := h.cleanPath(r.URL.Path)
 	if !ok {
+		slog.Warn("bad path", slog.String("path", r.URL.Path))
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
 
 	info, err := h.FS.Stat(ctx, p)
 	if err != nil {
+		slog.Warn("stat failed", slog.String("path", p), slog.Any("error", err))
 		http.NotFound(w, r)
 		return
 	}
 
 	if info.IsDir {
 		http.Error(w, "bad method", http.StatusMethodNotAllowed)
+		slog.Error("bad method", slog.String("path", p))
 		return
 	}
 
@@ -84,11 +89,13 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 
 	if drive, ok := h.FS.(*Drive); ok {
 		if err := drive.ServeContent(w, r, info); err != nil {
+			slog.Error("serve content failed", slog.String("path", p), slog.Any("error", err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
+	slog.Error("file not readable", slog.String("path", p))
 	http.Error(w, "file not readable", http.StatusInternalServerError)
 
 	return
@@ -99,6 +106,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 
 	p, ok := h.cleanPath(r.URL.Path)
 	if !ok {
+		slog.Warn("bad path", slog.String("path", r.URL.Path))
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
@@ -109,12 +117,14 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if depth != "0" && depth != "1" {
+		slog.Error("bad depth", slog.String("path", r.URL.Path), slog.String("depth", depth))
 		http.Error(w, "bad depth", http.StatusForbidden)
 		return
 	}
 
 	root, err := h.FS.Stat(ctx, p)
 	if err != nil {
+		slog.Error("stat failed", slog.String("path", p), slog.Any("error", err))
 		http.NotFound(w, r)
 		return
 	}
@@ -124,6 +134,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	if root.IsDir && depth == "1" {
 		children, err = h.FS.ReadDir(ctx, p)
 		if err != nil {
+			slog.Error("read dir failed", slog.String("path", p), slog.Any("error", err))
 			http.Error(w, "read dir failed", http.StatusInternalServerError)
 			return
 		}
