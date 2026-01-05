@@ -50,7 +50,7 @@ func bindEnvs() {
 	_ = viper.BindEnv("drive.cache_expire")
 }
 
-func LoadConfig(configPath string) (*Config, error) {
+func loadConfig(configPath string) (*Config, error) {
 	var err error
 
 	if configPath == "" {

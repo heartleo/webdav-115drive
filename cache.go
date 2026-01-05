@@ -8,8 +8,8 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-func (d *Drive) cacheKeyDir(p string) string {
-	return "dir:" + p
+func (d *Drive) cacheKeyDir(path string) string {
+	return "dir:" + path
 }
 
 func (d *Drive) cacheKeyDownload(pickCode string) string {

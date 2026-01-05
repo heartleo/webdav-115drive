@@ -1,4 +1,4 @@
-package main
+package webdav
 
 import (
 	"encoding/xml"
@@ -6,37 +6,37 @@ import (
 )
 
 const (
-	xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>`
+	XmlHeader = `<?xml version="1.0" encoding="UTF-8"?>`
 )
 
-type multiStatus struct {
+type MultiStatus struct {
 	XMLName  xml.Name      `xml:"d:multistatus"`
 	XmlnsD   string        `xml:"xmlns:d,attr"`
-	Response []davResponse `xml:"d:response"`
+	Response []DavResponse `xml:"d:response"`
 }
 
-type davResponse struct {
+type DavResponse struct {
 	Href     string   `xml:"d:href"`
-	Propstat propStat `xml:"d:propstat"`
+	Propstat PropStat `xml:"d:propstat"`
 }
 
-type propStat struct {
-	Prop   prop   `xml:"d:prop"`
+type PropStat struct {
+	Prop   Prop   `xml:"d:Prop"`
 	Status string `xml:"d:status"`
 }
 
-type prop struct {
+type Prop struct {
 	DisplayName   string        `xml:"d:displayname,omitempty"`
 	ContentLength string        `xml:"d:getcontentlength,omitempty"`
 	LastMod       string        `xml:"d:getlastmodified,omitempty"`
 	GetETag       string        `xml:"d:getetag,omitempty"`
-	ResourceType  *resourceType `xml:"d:resourcetype,omitempty"`
+	ResourceType  *ResourceType `xml:"d:resourcetype,omitempty"`
 }
 
-type resourceType struct {
+type ResourceType struct {
 	Collection *struct{} `xml:"d:collection,omitempty"`
 }
 
-func xmlEncoder(w io.Writer) *xml.Encoder {
+func XmlEncoder(w io.Writer) *xml.Encoder {
 	return xml.NewEncoder(w)
 }

@@ -27,13 +27,13 @@ var (
 func main() {
 	flag.Parse()
 
-	conf, err := LoadConfig(*configPath)
+	conf, err := loadConfig(*configPath)
 	if err != nil {
 		slog.Error("load config failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	fs, err := NewDrive(&conf.Drive)
+	fs, err := newDrive(&conf.Drive)
 	if err != nil {
 		slog.Error("create drive failed", slog.Any("error", err))
 		os.Exit(1)
@@ -54,13 +54,10 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	slog.Info("WebDAV server running",
-		slog.String("listen", *listen),
-		slog.String("path", h.BasePath),
-	)
+	slog.Info("webdav serve", slog.String("listen", *listen), slog.String("path", h.BasePath))
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("serve failed", slog.Any("error", err))
+		slog.Error("webdav serve failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 }

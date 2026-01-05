@@ -10,6 +10,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/heartleo/webdav-115drive/internal/webdav"
 )
 
 type Handler struct {
@@ -140,43 +142,43 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	responses := []davResponse{h.makeResponse(root)}
+	responses := []webdav.DavResponse{h.makeResponse(root)}
 
 	for _, v := range children {
 		responses = append(responses, h.makeResponse(v))
 	}
 
-	ms := multiStatus{
+	ms := webdav.MultiStatus{
 		XmlnsD:   "DAV:",
 		Response: responses,
 	}
 
 	w.Header().Set("Content-Type", `application/xml; charset="utf-8"`)
 	w.WriteHeader(http.StatusMultiStatus)
-	_, _ = w.Write([]byte(xmlHeader))
-	_ = xmlEncoder(w).Encode(ms)
+	_, _ = w.Write([]byte(webdav.XmlHeader))
+	_ = webdav.XmlEncoder(w).Encode(ms)
 }
 
-func (h *Handler) makeResponse(info *Info) davResponse {
+func (h *Handler) makeResponse(info *Info) webdav.DavResponse {
 	href := h.toHref(info.Path, info.IsDir)
 	etag := h.ensureETag(info)
 
-	props := prop{
+	props := webdav.Prop{
 		DisplayName: info.Name,
 		GetETag:     etag,
 		LastMod:     info.ModTime.UTC().Format(http.TimeFormat),
 	}
 
 	if info.IsDir {
-		props.ResourceType = &resourceType{Collection: &struct{}{}}
+		props.ResourceType = &webdav.ResourceType{Collection: &struct{}{}}
 	} else {
 		props.ContentLength = fmt.Sprintf("%d", info.Size)
-		props.ResourceType = &resourceType{}
+		props.ResourceType = &webdav.ResourceType{}
 	}
 
-	return davResponse{
+	return webdav.DavResponse{
 		Href: href,
-		Propstat: propStat{
+		Propstat: webdav.PropStat{
 			Prop:   props,
 			Status: "HTTP/1.1 200 OK",
 		},

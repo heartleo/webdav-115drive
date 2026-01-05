@@ -40,7 +40,7 @@ func (t *jarTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.tripper.RoundTrip(req)
 }
 
-func NewDrive(conf *DriveConfig) (*Drive, error) {
+func newDrive(conf *DriveConfig) (*Drive, error) {
 	credential := &driver.Credential{
 		UID:  conf.UID,
 		CID:  conf.CID,
