@@ -185,7 +185,7 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 	result, err := d.fetchCache(r.Context(), d.cacheKeyDownload(info.PickCode), func() (any, error) {
 		downloadInfo, err := d.client.Download(info.PickCode)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get download info: %w", err)
+			return nil, fmt.Errorf("download failed: %w", err)
 		}
 		return downloadInfo.Url.Url, nil
 	})
@@ -198,7 +198,8 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 		return fmt.Errorf("invalid download URL: %w", err)
 	}
 
-	slog.Debug("serving content",
+	slog.Debug("serve content",
+		slog.String("path", info.Path),
 		slog.String("name", info.Name),
 		slog.String("pickCode", info.PickCode),
 		slog.String("range", r.Header.Get("Range")),
