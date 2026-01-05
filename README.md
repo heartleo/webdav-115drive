@@ -34,7 +34,9 @@ services:
       - .env
     restart: unless-stopped
 EOF
+```
 
+```bash
 cat > .env <<EOF
 SERVER_USER=user
 SERVER_PWD=passwd
@@ -43,7 +45,9 @@ DRIVE_CID=xxx
 DRIVE_SEID=xxx
 DRIVE_KID=xxx
 EOF
+```
 
+```bash
 docker-compose up -d
 ```
 
