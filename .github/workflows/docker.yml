@@ -8,6 +8,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY_IMAGE: heartleo/webdav-115drive  # Primary image name (pushes to both Docker Hub and GHCR)
 
@@ -120,10 +124,18 @@ jobs:
             type=sha,prefix=sha-
             type=sha,format=short
 
-      - name: Create manifest list and push
+      - name: Create manifest list and push to Docker Hub
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("heartleo/")) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+
+      - name: Create manifest list and push to GHCR
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map(select(startswith("ghcr.io/")) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
