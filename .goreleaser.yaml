@@ -165,7 +165,8 @@ release:
   name_template: "Release {{.Version}}"
 
   # Draft release for manual review before publishing
-  draft: false
+  # Set to true to create draft releases that need manual publishing
+  draft: true
 
   # Release footer
   footer: |
