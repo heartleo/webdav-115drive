@@ -3,11 +3,9 @@
 
   # webdav-115drive
 
-  [![GitHub release](https://img.shields.io/github/v/release/heartleo/webdav-115drive)](https://github.com/heartleo/webdav-115drive/releases)
   ![Go Version](https://img.shields.io/badge/go-1.24+-blue.svg)
-  [![Go Report Card](https://goreportcard.com/badge/github.com/heartleo/webdav-115drive)](https://goreportcard.com/report/github.com/heartleo/webdav-115drive)
-  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
   [![Docker Pulls](https://img.shields.io/docker/pulls/heartleo/webdav-115drive.svg)](https://hub.docker.com/r/heartleo/webdav-115drive)
+  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 </div>
 
 > 一个 115 网盘 WebDAV 只读服务
