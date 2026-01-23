@@ -93,15 +93,15 @@ dockers:
     goarch: amd64
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "heartleo/webdav-115drive:{{ .Version }}-amd64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-amd64"
+      - "heartleo/webdav-115drive:{{ .Tag }}-amd64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-amd64"
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.description=WebDAV proxy for 115 Drive"
       - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
       - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.version={{ .Tag }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.licenses=MIT"
@@ -113,15 +113,15 @@ dockers:
     goarch: arm64
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "heartleo/webdav-115drive:{{ .Version }}-arm64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-arm64"
+      - "heartleo/webdav-115drive:{{ .Tag }}-arm64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-arm64"
     build_flag_templates:
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.description=WebDAV proxy for 115 Drive"
+      - "--label=org.opencontainers.image.description=A WebDAV service for 115drive"
       - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
       - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.version={{ .Tag }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.licenses=MIT"
@@ -129,28 +129,28 @@ dockers:
 # Docker manifest configuration (multi-arch images)
 docker_manifests:
   # Docker Hub manifests
-  - name_template: "heartleo/webdav-115drive:{{ .Version }}"
+  - name_template: "heartleo/webdav-115drive:{{ .Tag }}"
     image_templates:
-      - "heartleo/webdav-115drive:{{ .Version }}-amd64"
-      - "heartleo/webdav-115drive:{{ .Version }}-arm64"
+      - "heartleo/webdav-115drive:{{ .Tag }}-amd64"
+      - "heartleo/webdav-115drive:{{ .Tag }}-arm64"
 
   - name_template: "heartleo/webdav-115drive:latest"
     skip_push: auto
     image_templates:
-      - "heartleo/webdav-115drive:{{ .Version }}-amd64"
-      - "heartleo/webdav-115drive:{{ .Version }}-arm64"
+      - "heartleo/webdav-115drive:{{ .Tag }}-amd64"
+      - "heartleo/webdav-115drive:{{ .Tag }}-arm64"
 
   # GHCR manifests
-  - name_template: "ghcr.io/heartleo/webdav-115drive:{{ .Version }}"
+  - name_template: "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}"
     image_templates:
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-amd64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-arm64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-amd64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-arm64"
 
   - name_template: "ghcr.io/heartleo/webdav-115drive:latest"
     skip_push: auto
     image_templates:
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-amd64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-arm64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-amd64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-arm64"
 
 # GitHub Release configuration
 release:
@@ -177,9 +177,9 @@ release:
 
     ### Docker
     ```bash
-    docker pull heartleo/webdav-115drive:{{ .Version }}
+    docker pull heartleo/webdav-115drive:{{ .Tag }}
     # or
-    docker pull ghcr.io/heartleo/webdav-115drive:{{ .Version }}
+    docker pull ghcr.io/heartleo/webdav-115drive:{{ .Tag }}
     ```
 
     ---
