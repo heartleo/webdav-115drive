@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/icon.svg" alt="webdav-115drive" width="200"/>
+</div>
+
 # webdav-115drive
 
 ![Go Version](https://img.shields.io/badge/go-1.24+-blue.svg)
