@@ -4,6 +4,7 @@
   # webdav-115drive
 
   ![Go Version](https://img.shields.io/badge/go-1.24+-blue.svg)
+  [![Go Report Card](https://goreportcard.com/badge/github.com/heartleo/webdav-115drive)](https://goreportcard.com/report/github.com/heartleo/webdav-115drive)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
   [![Docker Pulls](https://img.shields.io/docker/pulls/heartleo/webdav-115drive.svg)](https://hub.docker.com/r/heartleo/webdav-115drive)
 </div>
