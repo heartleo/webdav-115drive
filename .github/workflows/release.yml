@@ -1,4 +1,4 @@
-baoliuname: Release
+name: Release
 
 on:
   push:
