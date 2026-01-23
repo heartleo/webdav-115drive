@@ -28,6 +28,9 @@ jobs:
           - linux/arm64
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
@@ -68,7 +71,9 @@ jobs:
         with:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          outputs: |
+            type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+            type=image,name=ghcr.io/${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
 
       - name: Export digest
         run: |
@@ -86,6 +91,7 @@ jobs:
 
   merge:
     runs-on: ubuntu-24.04
+    if: ${{ github.event_name != 'pull_request' }}
     needs:
       - build
     steps:
@@ -134,8 +140,12 @@ jobs:
         run: |
           docker buildx imagetools create \
             $(jq -cr '.tags | map(select(startswith("ghcr.io/")) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+            $(printf 'ghcr.io/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
-      - name: Inspect image
+      - name: Inspect Docker Hub image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+
+      - name: Inspect GHCR image
+        run: |
+          docker buildx imagetools inspect ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}

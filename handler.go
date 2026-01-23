@@ -14,7 +14,6 @@ import (
 	"github.com/heartleo/webdav-115drive/internal/webdav"
 )
 
-// Handler implements a WebDAV handler.
 type Handler struct {
 	FS       FS
 	BasePath string
