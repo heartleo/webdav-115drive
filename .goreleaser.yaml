@@ -168,12 +168,6 @@ release:
   # Draft release for manual review before publishing
   draft: false
 
-  # Replace existing release if it exists
-  replace: false
-
-  # Disable release creation if the tag doesn't match the pattern
-  disable: false
-
   # Release footer
   footer: |
     ## Installation
