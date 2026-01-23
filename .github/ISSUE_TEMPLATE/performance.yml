@@ -1,0 +1,160 @@
+name: ⚡ Performance Issue
+description: Report performance problems or suggest optimizations
+title: "[Performance]: "
+labels: ["performance", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a performance issue! Detailed information helps us optimize the service.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing
+      placeholder: |
+        Slow file downloads...
+        High memory usage...
+        CPU spikes when...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Performance Category
+      description: What aspect of performance is affected?
+      options:
+        - Download speed
+        - Upload speed
+        - Directory listing
+        - Memory usage
+        - CPU usage
+        - Response time
+        - Concurrent connections
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Performance Metrics
+      description: Provide specific measurements if available
+      placeholder: |
+        Download speed: 500KB/s (expected: 10MB/s)
+        Memory usage: 2GB (grows over time)
+        CPU usage: 80% constant
+        Response time: 5s for directory listing
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this performance issue?
+      placeholder: |
+        1. Configure with rate limit: 1000
+        2. Download a 1GB file
+        3. Observe slow speed
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version are you running?
+      placeholder: "e.g., v0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Binary
+        - Docker
+        - Docker Compose
+        - Kubernetes
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Your configuration (remove sensitive data)
+      placeholder: |
+        ```yaml
+        server:
+          addr: 0.0.0.0
+          port: 8080
+        drive:
+          rate: 1000
+          cache_expire: 600
+        ```
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: System specifications and environment
+      placeholder: |
+        CPU: 4 cores
+        RAM: 8GB
+        Network: 1Gbps
+        OS: Ubuntu 24.04
+        Concurrent users: ~50
+    validations:
+      required: true
+
+  - type: textarea
+    id: workload
+    attributes:
+      label: Workload Characteristics
+      description: Describe your typical usage pattern
+      placeholder: |
+        Number of files: ~10,000
+        Average file size: 100MB
+        Peak concurrent requests: 20
+        Operation types: mostly downloads
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Log output showing the issue (remove sensitive info)
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: profiling
+    attributes:
+      label: Profiling Data
+      description: Any profiling data (pprof, metrics, etc.)
+      placeholder: Attach profiling data or paste relevant snippets
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checks
+      options:
+        - label: I have searched for similar performance issues
+          required: true
+        - label: I have tried adjusting rate limit and cache settings
+          required: true
+        - label: This is not a network or 115 Drive API limitation
+          required: false

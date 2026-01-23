@@ -1,0 +1,85 @@
+name: 📝 Documentation Improvement
+description: Suggest improvements to documentation
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the documentation! Clear documentation benefits everyone.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs improvement?
+      options:
+        - README
+        - Configuration guide
+        - Installation guide
+        - Usage examples
+        - API documentation
+        - Troubleshooting guide
+        - Code comments
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What's Wrong or Missing?
+      description: Describe what's unclear, incorrect, or missing
+      placeholder: |
+        The README doesn't explain how to...
+        The configuration example is missing...
+        Step 3 in the installation guide is unclear...
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Where is the issue located?
+      placeholder: |
+        File: README.md, line 45
+        Section: "Configuration"
+        URL: https://github.com/...
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How should it be improved?
+      placeholder: |
+        Add a section explaining...
+        Clarify that...
+        Include an example of...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Proposed Content (Optional)
+      description: If you have specific wording or examples, share them here
+      placeholder: |
+        ```markdown
+        ## Example Configuration
+        ...
+        ```
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checks
+      options:
+        - label: I have checked the latest documentation
+          required: true
+        - label: I am willing to submit a PR to fix this
+          required: false

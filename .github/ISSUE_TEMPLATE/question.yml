@@ -1,0 +1,75 @@
+name: ❓ Question / Help
+description: Ask a question or get help with using webdav-115drive
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues and documentation before asking a question.
+        For general discussions, consider using [GitHub Discussions](https://github.com/heartleo/webdav-115drive/discussions).
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: How do I...?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide context about what you're trying to accomplish
+      placeholder: |
+        I'm trying to...
+        I want to achieve...
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What I've Tried
+      description: What have you already tried?
+      placeholder: |
+        1. I tried...
+        2. I looked at...
+        3. I read...
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Which version are you using?
+      placeholder: "e.g., v0.1.0 or 'latest'"
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration (if relevant)
+      description: Your configuration (remove sensitive information)
+      placeholder: |
+        ```yaml
+        server:
+          port: 8080
+        ```
+      render: yaml
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checks
+      options:
+        - label: I have read the README and documentation
+          required: true
+        - label: I have searched existing issues and discussions
+          required: true

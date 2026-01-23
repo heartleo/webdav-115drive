@@ -1,0 +1,161 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug! Please fill out the form below to help us understand and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Start webdav-115drive with config '...'
+        2. Connect using WebDAV client '...'
+        3. Try to access file '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: Tell us what should happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened
+      placeholder: Tell us what actually happened
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of webdav-115drive are you running?
+      placeholder: "e.g., v0.1.0, commit hash, or 'latest'"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Method
+      description: How are you running webdav-115drive?
+      options:
+        - Binary (standalone)
+        - Docker
+        - Docker Compose
+        - Kubernetes
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: go-version
+    attributes:
+      label: Go Version (if building from source)
+      description: Output of `go version`
+      placeholder: "e.g., go1.24.0"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: Specific version or distribution
+      placeholder: "e.g., Ubuntu 24.04, macOS 14, Windows 11"
+    validations:
+      required: false
+
+  - type: input
+    id: webdav-client
+    attributes:
+      label: WebDAV Client
+      description: Which WebDAV client are you using?
+      placeholder: "e.g., Windows Explorer, macOS Finder, rclone, Cyberduck"
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Relevant configuration (please remove sensitive information like credentials)
+      placeholder: |
+        ```yaml
+        server:
+          addr: 0.0.0.0
+          port: 8080
+        drive:
+          rate: 100
+        ```
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log output (please remove sensitive information)
+      placeholder: Paste log output here
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem
+      placeholder: Add any other context, screenshots, or relevant information
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checks
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided all requested information
+          required: true
+        - label: I have removed sensitive information from logs and configuration
+          required: true

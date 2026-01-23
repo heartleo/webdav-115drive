@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/heartleo/webdav-115drive/discussions
+    about: Ask questions and discuss with other community members
+  - name: 📚 Documentation
+    url: https://github.com/heartleo/webdav-115drive#readme
+    about: Check the documentation for usage instructions
