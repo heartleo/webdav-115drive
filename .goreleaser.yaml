@@ -161,8 +161,8 @@ release:
   # Automatically detect prerelease versions (containing -alpha, -beta, -rc, etc.)
   prerelease: auto
 
-  # Release name format
-  name_template: "Release {{.Version}}"
+  # Release name format (use tag name directly)
+  name_template: "{{.Tag}}"
 
   # Draft release for manual review before publishing
   # Set to true to create draft releases that need manual publishing
