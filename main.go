@@ -3,11 +3,20 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+)
+
+// Version information injected by GoReleaser at build time
+var (
+	version   = "dev"
+	commit    = "unknown"
+	date      = "unknown"
+	builtBy   = "unknown"
 )
 
 func init() {
@@ -19,13 +28,23 @@ func init() {
 }
 
 var (
-	listen     = flag.String("listen", ":8090", "listen address")
-	basePath   = flag.String("path", "/dav", "webdav path")
-	configPath = flag.String("config", "./", "config file path")
+	listen      = flag.String("listen", ":8090", "listen address")
+	basePath    = flag.String("path", "/dav", "webdav path")
+	configPath  = flag.String("config", "./", "config file path")
+	showVersion = flag.Bool("version", false, "show version information")
 )
 
 func main() {
 	flag.Parse()
+
+	// Handle version flag
+	if *showVersion {
+		fmt.Printf("webdav-115drive %s\n", version)
+		fmt.Printf("  commit: %s\n", commit)
+		fmt.Printf("  built at: %s\n", date)
+		fmt.Printf("  built by: %s\n", builtBy)
+		os.Exit(0)
+	}
 
 	conf, err := loadConfig(*configPath)
 	if err != nil {
@@ -54,7 +73,11 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	slog.Info("webdav serve", slog.String("listen", *listen), slog.String("path", h.BasePath))
+	slog.Info("webdav serve",
+		slog.String("version", version),
+		slog.String("listen", *listen),
+		slog.String("path", h.BasePath),
+	)
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("webdav serve failed", slog.Any("error", err))

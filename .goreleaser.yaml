@@ -1,0 +1,192 @@
+# GoReleaser configuration for webdav-115drive
+# Documentation: https://goreleaser.com
+
+version: 2
+
+# Project metadata
+project_name: webdav-115drive
+
+# Build configuration
+builds:
+  - id: webdav-115drive
+    main: .
+    binary: webdav-115drive
+
+    # Multi-platform builds
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+    # Inject version information at build time
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+    env:
+      - CGO_ENABLED=0
+
+# Archive configuration
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - config.yaml.example
+      - .env.example
+
+# Checksums
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+# Changelog generation based on Conventional Commits
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^build:'
+      - '^style:'
+      - 'Merge pull request'
+      - 'Merge branch'
+  groups:
+    - title: 'New Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance Improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: 'Refactors'
+      regexp: '^.*?refactor(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: 'Other Changes'
+      order: 999
+
+# Docker image configuration
+dockers:
+  # Build for amd64
+  - id: docker-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "heartleo/webdav-115drive:{{ .Version }}-amd64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description=WebDAV proxy for 115 Drive"
+      - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
+      - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+  # Build for arm64
+  - id: docker-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "heartleo/webdav-115drive:{{ .Version }}-arm64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-arm64"
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description=WebDAV proxy for 115 Drive"
+      - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
+      - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+# Docker manifest configuration (multi-arch images)
+docker_manifests:
+  # Docker Hub manifests
+  - name_template: "heartleo/webdav-115drive:{{ .Version }}"
+    image_templates:
+      - "heartleo/webdav-115drive:{{ .Version }}-amd64"
+      - "heartleo/webdav-115drive:{{ .Version }}-arm64"
+
+  - name_template: "heartleo/webdav-115drive:latest"
+    skip_push: auto
+    image_templates:
+      - "heartleo/webdav-115drive:{{ .Version }}-amd64"
+      - "heartleo/webdav-115drive:{{ .Version }}-arm64"
+
+  # GHCR manifests
+  - name_template: "ghcr.io/heartleo/webdav-115drive:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-amd64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/heartleo/webdav-115drive:latest"
+    skip_push: auto
+    image_templates:
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-amd64"
+      - "ghcr.io/heartleo/webdav-115drive:{{ .Version }}-arm64"
+
+# GitHub Release configuration
+release:
+  github:
+    owner: heartleo
+    name: webdav-115drive
+
+  # Automatically detect prerelease versions (containing -alpha, -beta, -rc, etc.)
+  prerelease: auto
+
+  # Release name format
+  name_template: "Release {{.Version}}"
+
+  # Draft release for manual review before publishing
+  draft: false
+
+  # Replace existing release if it exists
+  replace: false
+
+  # Disable release creation if the tag doesn't match the pattern
+  disable: false
+
+  # Release footer
+  footer: |
+    ## Installation
+
+    ### Binary
+    Download the appropriate binary for your platform from the assets below.
+
+    ### Docker
+    ```bash
+    docker pull heartleo/webdav-115drive:{{ .Version }}
+    # or
+    docker pull ghcr.io/heartleo/webdav-115drive:{{ .Version }}
+    ```
+
+    ---
+    **Full Changelog**: https://github.com/heartleo/webdav-115drive/compare/{{ .PreviousTag }}...{{ .Tag }}

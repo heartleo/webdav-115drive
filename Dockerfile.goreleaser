@@ -1,0 +1,20 @@
+# Dockerfile for GoReleaser
+# This Dockerfile is used by GoReleaser to build Docker images
+# GoReleaser will build the binary first, then copy it into the image
+
+FROM alpine:3.22
+
+# Install CA certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /
+
+# Copy the pre-built binary from GoReleaser
+# GoReleaser will replace this with the actual binary path
+COPY webdav-115drive /webdav-115drive
+
+# Expose default port
+EXPOSE 8090
+
+# Run the binary
+ENTRYPOINT ["/webdav-115drive"]

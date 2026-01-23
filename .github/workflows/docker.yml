@@ -5,6 +5,8 @@ on:
     branches: [ "main" ]
     paths:
       - '**.go'
+    tags-ignore:
+      - 'v*.*.*'  # Release workflow handles semver tag pushes
   pull_request:
     branches: [ "main" ]
 
