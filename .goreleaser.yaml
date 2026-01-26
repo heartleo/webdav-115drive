@@ -46,12 +46,13 @@ archives:
         format: zip
     files:
       - README.md
+      - LICENSE
       - config.yaml.example
       - .env.example
 
 # Checksums
 checksum:
-  name_template: 'checksums.txt'
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
   algorithm: sha256
 
 # Changelog generation based on Conventional Commits
@@ -98,7 +99,7 @@ dockers:
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.description=WebDAV proxy for 115 Drive"
+      - "--label=org.opencontainers.image.description=A WebDAV service for 115drive"
       - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
       - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
       - "--label=org.opencontainers.image.version={{ .Tag }}"
