@@ -35,15 +35,17 @@ builds:
 # Archive configuration
 archives:
   - id: default
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
-      {{- .Version }}_
+      {{- .Tag }}_
       {{- .Os }}_
       {{- .Arch }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - README.md
       - LICENSE
@@ -52,7 +54,7 @@ archives:
 
 # Checksums
 checksum:
-  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  name_template: '{{ .ProjectName }}_{{ .Tag }}_checksums.txt'
   algorithm: sha256
 
 # Changelog generation based on Conventional Commits
@@ -85,73 +87,28 @@ changelog:
     - title: 'Other Changes'
       order: 999
 
-# Docker image configuration
-dockers:
-  # Build for amd64
-  - id: docker-amd64
-    use: buildx
-    goos: linux
-    goarch: amd64
+# Docker image configuration (v2)
+dockers_v2:
+  - id: webdav-115drive
     dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "heartleo/webdav-115drive:{{ .Tag }}-amd64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-amd64"
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.description=A WebDAV service for 115drive"
-      - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
-      - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
-      - "--label=org.opencontainers.image.version={{ .Tag }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.licenses=MIT"
-
-  # Build for arm64
-  - id: docker-arm64
-    use: buildx
-    goos: linux
-    goarch: arm64
-    dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "heartleo/webdav-115drive:{{ .Tag }}-arm64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-arm64"
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.description=A WebDAV service for 115drive"
-      - "--label=org.opencontainers.image.url=https://github.com/heartleo/webdav-115drive"
-      - "--label=org.opencontainers.image.source=https://github.com/heartleo/webdav-115drive"
-      - "--label=org.opencontainers.image.version={{ .Tag }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.licenses=MIT"
-
-# Docker manifest configuration (multi-arch images)
-docker_manifests:
-  # Docker Hub manifests
-  - name_template: "heartleo/webdav-115drive:{{ .Tag }}"
-    image_templates:
-      - "heartleo/webdav-115drive:{{ .Tag }}-amd64"
-      - "heartleo/webdav-115drive:{{ .Tag }}-arm64"
-
-  - name_template: "heartleo/webdav-115drive:latest"
-    skip_push: auto
-    image_templates:
-      - "heartleo/webdav-115drive:{{ .Tag }}-amd64"
-      - "heartleo/webdav-115drive:{{ .Tag }}-arm64"
-
-  # GHCR manifests
-  - name_template: "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}"
-    image_templates:
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-amd64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-arm64"
-
-  - name_template: "ghcr.io/heartleo/webdav-115drive:latest"
-    skip_push: auto
-    image_templates:
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-amd64"
-      - "ghcr.io/heartleo/webdav-115drive:{{ .Tag }}-arm64"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    images:
+      - "heartleo/webdav-115drive"
+      - "ghcr.io/heartleo/webdav-115drive"
+    tags:
+      - "{{ .Tag }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "A WebDAV service for 115drive"
+      org.opencontainers.image.url: "https://github.com/heartleo/webdav-115drive"
+      org.opencontainers.image.source: "https://github.com/heartleo/webdav-115drive"
+      org.opencontainers.image.version: "{{ .Tag }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.licenses: "MIT"
 
 # GitHub Release configuration
 release:

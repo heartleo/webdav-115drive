@@ -4,6 +4,7 @@ RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /
 
-COPY webdav-115drive /webdav-115drive
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/webdav-115drive /webdav-115drive
 
 ENTRYPOINT ["/webdav-115drive"]
