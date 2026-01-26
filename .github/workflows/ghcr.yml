@@ -1,6 +1,14 @@
-name: Build And Push to GHCR
+name: Build And Push To GHCR
 
 on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '**.go'
+    tags-ignore:
+      - 'v*.*.*'  # Release workflow handles semver tag pushes
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       tag:
