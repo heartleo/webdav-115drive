@@ -1,7 +1,7 @@
 server:
   host: 127.0.0.1
   port: 8090
-  base_path: /dav
+  path: /dav
   user: user
   pwd: password
 drive:

@@ -44,8 +44,11 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle(h.BasePath+"/", h)
-	mux.Handle(h.BasePath, http.RedirectHandler(h.BasePath+"/", http.StatusMovedPermanently))
+	if h.BasePath == "/" {
+		mux.Handle("/", h)
+	} else {
+		mux.Handle(h.BasePath+"/", h)
+	}
 
 	handler := logMiddleware(mux)
 
