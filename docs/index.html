@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webdav-115drive - 将 115 网盘挂载为 WebDAV 只读服务</title>
+  <meta name="description" content="基于 Go 编写的 WebDAV 代理服务，将 115 网盘挂载为只读 WebDAV 端点，支持 Docker 一键部署。">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <style>
+    /* ========== Reset & Base ========== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 2rem;
+    }
+
+    /* ========== Design Tokens (Dark Default) ========== */
+    :root {
+      --bg: #0f172a;
+      --bg-nav: #0d1424;
+      --bg-card: #1e293b;
+      --bg-code: #111827;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #818cf8;
+      --accent-hover: #a5b4fc;
+      --green: #34d399;
+      --nav-width: 260px;
+      --font-mono: 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+    }
+
+    /* ========== Light Theme ========== */
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-nav: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-code: #f1f5f9;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: var(--accent-hover);
+    }
+
+    /* ========== Sidebar ========== */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--nav-width);
+      height: 100vh;
+      background: var(--bg-nav);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      transition: transform 0.3s ease, background 0.3s;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header img {
+      width: 28px;
+      height: 28px;
+    }
+
+    .sidebar-header span {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 1rem 0;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      padding: 0.5rem 1.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      border-left: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(129, 140, 248, 0.06);
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+    }
+
+    /* ========== Top Toolbar (right corner) ========== */
+    .top-toolbar {
+      position: fixed;
+      top: 0.75rem;
+      right: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 110;
+    }
+
+    .github-star {
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+
+    .github-star iframe {
+      border: none;
+    }
+
+    .sidebar-footer a {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .sidebar-footer a:hover {
+      color: var(--text);
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .theme-toggle:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    /* ========== Mobile Header ========== */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: var(--bg-nav);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      z-index: 90;
+      transition: background 0.3s;
+    }
+
+    .mobile-header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mobile-header-brand img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .mobile-header-brand span {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .hamburger {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 95;
+    }
+
+    .overlay.open {
+      display: block;
+    }
+
+    /* ========== Main Content ========== */
+    .main {
+      margin-left: var(--nav-width);
+      min-height: 100vh;
+      transition: margin-left 0.3s;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    section {
+      padding: 4rem 0;
+    }
+
+    section + section {
+      border-top: 1px solid var(--border);
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ========== Hero ========== */
+    .hero {
+      padding: 6rem 0 4rem;
+      text-align: center;
+    }
+
+    .hero-icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--green));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+      line-height: 1.2;
+    }
+
+    .hero .tagline {
+      font-size: 1.2rem;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .hero .description {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .badges img {
+      height: 22px;
+    }
+
+    .hero-code {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 2rem;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .hero-code code {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    .hero-code .copy-btn {
+      flex-shrink: 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-muted);
+      color: var(--text);
+    }
+
+    /* ========== Features Grid ========== */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      transition: border-color 0.2s, background 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+    }
+
+    .feature-card .icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .feature-card h3 {
+      margin-bottom: 0.4rem;
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+      margin-bottom: 0;
+    }
+
+    /* ========== Code Blocks ========== */
+    .code-block {
+      position: relative;
+      margin-bottom: 1.25rem;
+    }
+
+    .code-block-label {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.35rem 0.85rem;
+      margin-bottom: -1px;
+      position: relative;
+      z-index: 1;
+    }
+
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.25rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.65;
+      color: var(--text);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .code-block-label + pre {
+      border-top-left-radius: 0;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.6rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      font-family: inherit;
+      z-index: 2;
+    }
+
+    .code-block-label ~ .copy-btn {
+      top: calc(0.35rem + 1.1rem + 0.35rem + 0.6rem);
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+
+    .hero-code .copy-btn {
+      position: static;
+    }
+
+    .note {
+      background: rgba(129, 140, 248, 0.08);
+      border-left: 3px solid var(--accent);
+      padding: 0.85rem 1.1rem;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+    }
+
+    /* ========== Table ========== */
+    .table-wrapper {
+      overflow-x: auto;
+      margin-top: 1.25rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--text);
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    td:first-child {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    [data-theme="light"] tr:hover td {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    [data-theme="light"] tr:nth-child(even) td {
+      background: rgba(0, 0, 0, 0.015);
+    }
+
+    /* ========== Ordered List (Cookies) ========== */
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      padding-left: 0;
+      margin-top: 1rem;
+    }
+
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      padding-left: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+      font-size: 0.925rem;
+    }
+
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .steps li strong {
+      color: var(--text);
+    }
+
+    .steps code {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      background: var(--bg-code);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    /* ========== Footer ========== */
+    .footer {
+      text-align: center;
+      padding: 2.5rem 0;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .footer a {
+      color: var(--text-muted);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .footer a:hover {
+      color: var(--text);
+    }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .mobile-header {
+        display: flex;
+      }
+
+      .main {
+        margin-left: 0;
+        padding-top: 56px;
+      }
+
+      .container {
+        padding: 0 1.25rem;
+      }
+
+      .hero {
+        padding: 3.5rem 0 2.5rem;
+      }
+
+      .hero h1 {
+        font-size: 1.75rem;
+      }
+
+      .hero .tagline {
+        font-size: 1.05rem;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h2 {
+        font-size: 1.4rem;
+      }
+
+      section {
+        padding: 2.5rem 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/icon.svg" alt="webdav-115drive logo">
+      <span>webdav-115drive</span>
+      <button class="theme-toggle" id="theme-toggle" aria-label="切换主题">☀️</button>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <a href="#hero">首页</a>
+      <a href="#features">功能特性</a>
+      <a href="#quickstart">快速开始</a>
+      <a href="#configuration">配置说明</a>
+      <a href="#cookies">获取 Cookie</a>
+    </nav>
+  </aside>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <div class="mobile-header-brand">
+      <img src="assets/icon.svg" alt="webdav-115drive logo">
+      <span>webdav-115drive</span>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="菜单">☰</button>
+  </header>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="container">
+
+      <!-- Hero -->
+      <section class="hero" id="hero">
+        <img src="assets/icon.svg" alt="webdav-115drive" class="hero-icon">
+        <h1>webdav-115drive</h1>
+        <p class="tagline">将 115 网盘挂载为 WebDAV 只读服务</p>
+        <p class="description">基于 Go 编写，支持 Docker 一键部署，兼容任意 WebDAV 客户端</p>
+        <div class="badges">
+          <a href="https://github.com/heartleo/webdav-115drive" target="_blank" rel="noopener"><img src="https://img.shields.io/github/stars/heartleo/webdav-115drive?style=social" alt="GitHub Stars"></a>
+          <a href="https://go.dev/" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/go-1.24+-blue.svg" alt="Go 1.24+"></a>
+          <a href="https://github.com/heartleo/webdav-115drive/pkgs/container/webdav-115drive" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/ghcr.io-container-blue?logo=github" alt="GHCR Package"></a>
+          <a href="https://github.com/heartleo/webdav-115drive/blob/main/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License"></a>
+        </div>
+        <div class="actions">
+          <a href="#quickstart" class="btn btn-primary">快速开始</a>
+          <a href="https://github.com/heartleo/webdav-115drive" target="_blank" rel="noopener" class="btn btn-secondary">查看源码</a>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features">
+        <h2>功能特性</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <span class="icon">📡</span>
+            <h3>WebDAV 协议</h3>
+            <p>标准 WebDAV 实现，兼容 macOS Finder、Windows 资源管理器、Infuse 等各类客户端</p>
+          </div>
+          <div class="feature-card">
+            <span class="icon">⚡</span>
+            <h3>速率限制</h3>
+            <p>内置令牌桶限流，可配置每秒请求数，防止触发 115 API 频率限制</p>
+          </div>
+          <div class="feature-card">
+            <span class="icon">🗃️</span>
+            <h3>智能缓存</h3>
+            <p>目录列表与下载链接内存缓存，TTL 可配置，显著降低 API 调用次数</p>
+          </div>
+          <div class="feature-card">
+            <span class="icon">🐳</span>
+            <h3>多平台 Docker</h3>
+            <p>提供 linux/amd64 与 linux/arm64 镜像，NAS 设备（群晖、威联通）开箱即用</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Start -->
+      <section id="quickstart">
+        <h2>快速开始</h2>
+
+        <h3>Docker Run</h3>
+        <div class="code-block">
+          <pre id="docker-run">docker run -d \
+  --name webdav-115drive \
+  -p 8090:8090 \
+  -e DRIVE_UID=你的UID \
+  -e DRIVE_CID=你的CID \
+  -e DRIVE_SEID=你的SEID \
+  -e DRIVE_KID=你的KID \
+  ghcr.io/heartleo/webdav-115drive</pre>
+          <button class="copy-btn" data-target="docker-run">复制</button>
+        </div>
+
+        <h3>Docker Compose</h3>
+        <div class="code-block">
+          <span class="code-block-label">.env</span>
+          <pre id="compose-env">DRIVE_UID=你的UID
+DRIVE_CID=你的CID
+DRIVE_SEID=你的SEID
+DRIVE_KID=你的KID</pre>
+          <button class="copy-btn" data-target="compose-env">复制</button>
+        </div>
+        <div class="code-block">
+          <span class="code-block-label">docker-compose.yml</span>
+          <pre id="compose-yml">version: "3"
+services:
+  webdav:
+    image: ghcr.io/heartleo/webdav-115drive
+    container_name: webdav-115drive
+    ports:
+      - "8090:8090"
+    env_file:
+      - .env
+    restart: unless-stopped</pre>
+          <button class="copy-btn" data-target="compose-yml">复制</button>
+        </div>
+
+        <div class="note">启动后访问 <strong>http://localhost:8090/dav</strong>，用户名 <code>user</code>，密码 <code>password</code></div>
+      </section>
+
+      <!-- Configuration -->
+      <section id="configuration">
+        <h2>配置说明</h2>
+        <p>配置优先级：环境变量 &gt; config.yaml &gt; .env &gt; 默认值</p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>环境变量</th>
+                <th>说明</th>
+                <th>默认值</th>
+                <th>必填</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>SERVER_HOST</td><td>监听主机</td><td>0.0.0.0</td><td>—</td></tr>
+              <tr><td>SERVER_PORT</td><td>监听端口</td><td>8090</td><td>—</td></tr>
+              <tr><td>SERVER_PATH</td><td>WebDAV 路径</td><td>/dav</td><td>—</td></tr>
+              <tr><td>SERVER_USER</td><td>用户名</td><td>user</td><td>—</td></tr>
+              <tr><td>SERVER_PWD</td><td>密码</td><td>password</td><td>—</td></tr>
+              <tr><td>DRIVE_UID</td><td>115 Cookie UID</td><td>—</td><td>✅</td></tr>
+              <tr><td>DRIVE_CID</td><td>115 Cookie CID</td><td>—</td><td>✅</td></tr>
+              <tr><td>DRIVE_SEID</td><td>115 Cookie SEID</td><td>—</td><td>✅</td></tr>
+              <tr><td>DRIVE_KID</td><td>115 Cookie KID</td><td>—</td><td>✅</td></tr>
+              <tr><td>DRIVE_RATE</td><td>API 请求速率（次/秒）</td><td>3</td><td>—</td></tr>
+              <tr><td>DRIVE_CACHE_EXPIRE</td><td>缓存过期时间（分钟）</td><td>1</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Get Cookies -->
+      <section id="cookies">
+        <h2>获取 Cookie</h2>
+        <p>按以下步骤从浏览器获取 115 网盘的 Cookie 信息：</p>
+        <ol class="steps">
+          <li>登录 <a href="https://115.com" target="_blank" rel="noopener"><strong>115.com</strong></a> 网页版</li>
+          <li>按 <code>F12</code> 打开浏览器开发者工具</li>
+          <li>切换到 <strong>Application</strong>（应用）选项卡</li>
+          <li>在左侧找到 <strong>Cookies</strong>，点击展开并选择 <code>https://115.com</code></li>
+          <li>分别复制 <code>UID</code>、<code>CID</code>、<code>SEID</code>、<code>KID</code> 对应的值</li>
+        </ol>
+      </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        Made with ❤️ by <a href="https://github.com/heartleo" target="_blank" rel="noopener">heartleo</a> · MIT License
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ========== Theme Toggle ========== */
+      var html = document.documentElement;
+      var toggleBtn = document.getElementById('theme-toggle');
+      var stored = localStorage.getItem('theme');
+
+      if (stored === 'light' || stored === 'dark') {
+        html.setAttribute('data-theme', stored);
+      }
+
+      function updateIcon() {
+        toggleBtn.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+      }
+
+      updateIcon();
+
+      toggleBtn.addEventListener('click', function () {
+        var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        updateIcon();
+      });
+
+      /* ========== Copy Buttons ========== */
+      document.querySelectorAll('.copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var targetId = btn.getAttribute('data-target');
+          var text = '';
+
+          if (targetId === 'hero-cmd') {
+            var codeEl = btn.closest('.hero-code').querySelector('code');
+            text = codeEl.textContent;
+          } else {
+            var preEl = document.getElementById(targetId);
+            if (preEl) text = preEl.textContent;
+          }
+
+          if (!text) return;
+
+          navigator.clipboard.writeText(text).then(function () {
+            var original = btn.textContent;
+            btn.textContent = '已复制';
+            setTimeout(function () {
+              btn.textContent = original;
+            }, 2000);
+          }).catch(function () {
+            btn.textContent = '复制失败';
+            setTimeout(function () {
+              btn.textContent = '复制';
+            }, 2000);
+          });
+        });
+      });
+
+      /* ========== Mobile Menu ========== */
+      var sidebar = document.getElementById('sidebar');
+      var hamburger = document.getElementById('hamburger');
+      var overlay = document.getElementById('overlay');
+
+      function openMenu() {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+      }
+
+      function closeMenu() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      }
+
+      hamburger.addEventListener('click', function () {
+        sidebar.classList.contains('open') ? closeMenu() : openMenu();
+      });
+
+      overlay.addEventListener('click', closeMenu);
+
+      sidebar.querySelectorAll('.sidebar-nav a').forEach(function (link) {
+        link.addEventListener('click', closeMenu);
+      });
+
+      /* ========== Active Nav on Scroll ========== */
+      var sections = document.querySelectorAll('section[id]');
+      var navLinks = document.querySelectorAll('#sidebar-nav a');
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            var id = entry.target.getAttribute('id');
+            navLinks.forEach(function (link) {
+              link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+            });
+          }
+        });
+      }, {
+        rootMargin: '-20% 0px -70% 0px',
+        threshold: 0
+      });
+
+      sections.forEach(function (section) {
+        observer.observe(section);
+      });
+    })();
+  </script>
+
+</body>
+</html>
