@@ -115,6 +115,10 @@ cp config.yaml.example config.yaml
 
 ---
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=heartleo/webdav-115drive&type=Date)](https://star-history.com/#heartleo/webdav-115drive&Date)
+
 <div align="center">
 
 Made with ❤️ by [heartleo](https://github.com/heartleo)
