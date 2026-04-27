@@ -12,7 +12,7 @@
 
 </div>
 
-## 🐳 Docker 运行
+## Docker 运行
 
 ```bash
 docker run --rm -d \
@@ -25,7 +25,7 @@ docker run --rm -d \
   heartleo/webdav-115drive
 ```
 
-## 🐋 Docker Compose 运行
+## Docker Compose 运行
 
 ```bash
 cat > docker-compose.yml <<EOF
@@ -54,9 +54,9 @@ EOF
 docker-compose up -d
 ```
 
-## 🚀 编译运行
+## 编译运行
 
-### 1. ⚒️ 编译
+### 1. 编译
 
 ```bash
 git clone https://github.com/heartleo/webdav-115drive.git
@@ -64,7 +64,7 @@ cd webdav-115drive
 go build -o webdav-115drive ./cmd/webdav-115drive/
 ```
 
-### 2. ⚙️ 配置
+### 2. 配置
 
 **使用 `.env` 文件**
 
@@ -78,13 +78,13 @@ cp .env.example .env
 cp config.yaml.example config.yaml
 ```
 
-### 3. ✈️ 运行
+### 3. 运行
 
 ```bash
 ./webdav-115drive
 ```
 
-### 🔑 环境变量
+### 环境变量
 
 | 变量名               | 说明                  | 默认值    | 必填 |
 | -------------------- | --------------------- | --------- | ---- |
@@ -101,7 +101,7 @@ cp config.yaml.example config.yaml
 | `DRIVE_RATE`         | API 请求速率（次/秒） | `3`       | ❌    |
 | `DRIVE_CACHE_EXPIRE` | 缓存过期时间（分钟）  | `1`       | ❌    |
 
-## 🍪 获取 115 Cookies
+## 获取 115 Cookies
 
 1. 登录 [115.com](https://115.com/)
 2. 打开浏览器开发者工具（F12）
