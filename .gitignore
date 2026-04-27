@@ -30,6 +30,7 @@ Thumbs.db
 *.key
 *.log
 bin/
+dist/
 *.env
 *.yaml
 !.goreleaser.yaml

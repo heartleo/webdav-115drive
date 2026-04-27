@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"crypto/sha1"
@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/heartleo/webdav-115drive/internal/drive"
 	"github.com/heartleo/webdav-115drive/internal/webdav"
 )
 
 type Handler struct {
-	FS       FS
+	FS       drive.FileSystem
 	BasePath string
 }
 
@@ -30,7 +31,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Set("Allow", "OPTIONS, GET, HEAD, PROPFIND")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		slog.Error("method not allowed", slog.String("method", r.Method), slog.String("path", r.URL.Path))
+		slog.Error("method not allowed",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+		)
 	}
 }
 
@@ -89,18 +93,17 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
-	if drive, ok := h.FS.(*Drive); ok {
-		if err := drive.ServeContent(w, r, info); err != nil {
-			slog.Error("serve content failed", slog.String("path", p), slog.Any("error", err))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	cs, ok := h.FS.(drive.ContentServer)
+	if !ok {
+		slog.Error("file not readable", slog.String("path", p))
+		http.Error(w, "file not readable", http.StatusInternalServerError)
 		return
 	}
 
-	slog.Error("file not readable", slog.String("path", p))
-	http.Error(w, "file not readable", http.StatusInternalServerError)
-
-	return
+	if err := cs.ServeContent(w, r, info); err != nil {
+		slog.Error("serve content failed", slog.String("path", p), slog.Any("error", err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +122,10 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if depth != "0" && depth != "1" {
-		slog.Error("bad depth", slog.String("path", r.URL.Path), slog.String("depth", depth))
+		slog.Error("bad depth",
+			slog.String("path", r.URL.Path),
+			slog.String("depth", depth),
+		)
 		http.Error(w, "bad depth", http.StatusForbidden)
 		return
 	}
@@ -131,7 +137,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var children []*Info
+	var children []*drive.Info
 
 	if root.IsDir && depth == "1" {
 		children, err = h.FS.ReadDir(ctx, p)
@@ -143,7 +149,6 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responses := []webdav.DavResponse{h.makeResponse(root)}
-
 	for _, v := range children {
 		responses = append(responses, h.makeResponse(v))
 	}
@@ -159,7 +164,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	_ = webdav.XmlEncoder(w).Encode(ms)
 }
 
-func (h *Handler) makeResponse(info *Info) webdav.DavResponse {
+func (h *Handler) makeResponse(info *drive.Info) webdav.DavResponse {
 	href := h.toHref(info.Path, info.IsDir)
 	etag := h.ensureETag(info)
 
@@ -185,13 +190,11 @@ func (h *Handler) makeResponse(info *Info) webdav.DavResponse {
 	}
 }
 
-func (h *Handler) ensureETag(info *Info) string {
+func (h *Handler) ensureETag(info *drive.Info) string {
 	if info.ETag != "" {
 		return quoteETag(info.ETag)
 	}
-
-	sum := sha1.Sum([]byte(fmt.Sprintf("%d:%d", info.Size, info.ModTime.UnixNano())))
-
+	sum := sha1.Sum(fmt.Appendf(nil, "%d:%d", info.Size, info.ModTime.UnixNano()))
 	return quoteETag(hex.EncodeToString(sum[:]))
 }
 
@@ -209,16 +212,13 @@ func (h *Handler) cleanPath(urlPath string) (string, bool) {
 		}
 		urlPath = strings.TrimPrefix(urlPath, h.BasePath)
 	}
-
 	return path.Join("/", urlPath), true
 }
 
 func (h *Handler) toHref(p string, isDir bool) string {
 	href := path.Join("/", h.BasePath, p)
-
 	if isDir && href != "/" {
 		href += "/"
 	}
-
 	return href
 }

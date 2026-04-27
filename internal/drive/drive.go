@@ -1,4 +1,4 @@
-package main
+package drive
 
 import (
 	"context"
@@ -17,15 +17,25 @@ import (
 	"github.com/SheltonZhu/115driver/pkg/driver"
 	"github.com/go-resty/resty/v2"
 	"github.com/patrickmn/go-cache"
+	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
 )
 
+type Options struct {
+	UID         string
+	CID         string
+	SEID        string
+	KID         string
+	Rate        int
+	CacheExpire int
+}
+
 type Drive struct {
-	conf         *DriveConfig
 	client       *driver.Pan115Client
 	reverseProxy *httputil.ReverseProxy
 	limiter      *rate.Limiter
 	cache        *cache.Cache
+	group        singleflight.Group
 }
 
 type jarTransport struct {
@@ -40,12 +50,12 @@ func (t *jarTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.tripper.RoundTrip(req)
 }
 
-func newDrive(conf *DriveConfig) (*Drive, error) {
+func New(opts Options) (*Drive, error) {
 	credential := &driver.Credential{
-		UID:  conf.UID,
-		CID:  conf.CID,
-		SEID: conf.SEID,
-		KID:  conf.KID,
+		UID:  opts.UID,
+		CID:  opts.CID,
+		SEID: opts.SEID,
+		KID:  opts.KID,
 	}
 
 	jar, err := cookiejar.New(nil)
@@ -59,7 +69,7 @@ func newDrive(conf *DriveConfig) (*Drive, error) {
 		SetUserAgent(driver.UA115Browser).ImportCredential(credential)
 
 	if err := client.LoginCheck(); err != nil {
-		return nil, fmt.Errorf("drive login failed: %w", err)
+		return nil, fmt.Errorf("drive login: %w", err)
 	}
 
 	reverseProxy := &httputil.ReverseProxy{
@@ -73,29 +83,31 @@ func newDrive(conf *DriveConfig) (*Drive, error) {
 			req.Header.Set("Host", req.Host)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			slog.Warn("reverse proxy failed", slog.Any("error", err), slog.String("url", r.URL.String()))
+			slog.Warn("reverse proxy error",
+				slog.Any("error", err),
+				slog.String("url", r.URL.String()),
+			)
 		},
-		ModifyResponse: func(response *http.Response) error {
-			if response.StatusCode >= http.StatusBadRequest {
-				b, _ := io.ReadAll(response.Body)
-				slog.Warn("reverse proxy failed", slog.Any("status", response.Status),
-					slog.Any("body", string(b)))
+		ModifyResponse: func(resp *http.Response) error {
+			if resp.StatusCode >= http.StatusBadRequest {
+				b, _ := io.ReadAll(resp.Body)
+				slog.Warn("reverse proxy upstream error",
+					slog.String("status", resp.Status),
+					slog.String("body", string(b)),
+				)
 			}
 			return nil
 		},
 	}
 
-	expire := time.Duration(conf.CacheExpire) * time.Minute
+	expire := time.Duration(opts.CacheExpire) * time.Minute
 
-	fs := &Drive{
-		conf:         conf,
+	return &Drive{
 		client:       client,
 		reverseProxy: reverseProxy,
-		limiter:      rate.NewLimiter(rate.Every(time.Second), conf.Rate),
+		limiter:      rate.NewLimiter(rate.Every(time.Second), opts.Rate),
 		cache:        cache.New(expire, expire*2),
-	}
-
-	return fs, nil
+	}, nil
 }
 
 func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
@@ -128,26 +140,29 @@ func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
 func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
 	p = path.Join("/", p)
 
-	result, err := d.fetchCache(ctx, d.cacheKeyDir(p), func() (any, error) {
+	result, err := d.fetchCache(d.cacheKeyDir(p), func() (any, error) {
+		// root always maps to dirID "0"; DirName2CID is skipped to avoid an
+		// unnecessary API call and because it may not handle "/" correctly.
 		dirID := "0"
-
-		if dirResp, err := d.client.DirName2CID(p); err == nil {
+		if p != "/" {
+			dirResp, err := d.client.DirName2CID(p)
+			if err != nil {
+				return nil, fmt.Errorf("resolve path %q: %w", p, err)
+			}
 			dirID = string(dirResp.CategoryID)
 		}
 
 		var files *[]driver.File
 
-		err := d.checkRateLimit(ctx, func() error {
+		if err := d.checkRateLimit(ctx, func() error {
 			var e error
 			files, e = d.client.List(dirID)
 			return e
-		})
-		if err != nil {
-			return nil, fmt.Errorf("list files failed: %w", err)
+		}); err != nil {
+			return nil, fmt.Errorf("list files: %w", err)
 		}
 
 		infos := make([]*Info, 0, len(*files))
-
 		for _, f := range *files {
 			infos = append(infos, &Info{
 				Path:     path.Join(p, f.Name),
@@ -169,25 +184,24 @@ func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
 	return result.([]*Info), nil
 }
 
-func (d *Drive) Open(ctx context.Context, p string) (io.ReadSeeker, *Info, error) {
-	info, err := d.Stat(ctx, p)
-	if err != nil {
-		return nil, nil, err
-	}
-	return nil, info, nil
-}
-
 func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info) error {
 	if info.PickCode == "" {
 		return errors.New("pick code not found")
 	}
 
-	result, err := d.fetchCache(r.Context(), d.cacheKeyDownload(info.PickCode), func() (any, error) {
-		downloadInfo, err := d.client.Download(info.PickCode)
-		if err != nil {
-			return nil, fmt.Errorf("download failed: %w", err)
+	result, err := d.fetchCache(d.cacheKeyDownload(info.PickCode), func() (any, error) {
+		var rawURL string
+		if err := d.checkRateLimit(r.Context(), func() error {
+			dl, err := d.client.Download(info.PickCode)
+			if err != nil {
+				return fmt.Errorf("download: %w", err)
+			}
+			rawURL = dl.Url.Url
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		return downloadInfo.Url.Url, nil
+		return rawURL, nil
 	})
 	if err != nil {
 		return err

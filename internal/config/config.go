@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"errors"
@@ -12,28 +12,29 @@ import (
 )
 
 type ServerConfig struct {
-	Host string `yaml:"host" mapstructure:"host"`
-	Port int    `yaml:"port" mapstructure:"port"`
-	Path string `yaml:"path" mapstructure:"path"`
-	User string `yaml:"user" mapstructure:"user"`
-	Pwd  string `yaml:"pwd" mapstructure:"pwd"`
+	Host     string `yaml:"host"      mapstructure:"host"`
+	Port     int    `yaml:"port"      mapstructure:"port"`
+	Path     string `yaml:"path"      mapstructure:"path"`
+	User     string `yaml:"user"      mapstructure:"user"`
+	Password string `yaml:"password"  mapstructure:"password"`
+	LogLevel string `yaml:"log_level" mapstructure:"log_level"`
 }
 
 type DriveConfig struct {
-	UID         string `yaml:"uid" mapstructure:"uid"`
-	CID         string `yaml:"cid" mapstructure:"cid"`
-	SEID        string `yaml:"seid" mapstructure:"seid"`
-	KID         string `yaml:"kid" mapstructure:"kid"`
-	Rate        int    `yaml:"rate" mapstructure:"rate"`
+	UID         string `yaml:"uid"          mapstructure:"uid"`
+	CID         string `yaml:"cid"          mapstructure:"cid"`
+	SEID        string `yaml:"seid"         mapstructure:"seid"`
+	KID         string `yaml:"kid"          mapstructure:"kid"`
+	Rate        int    `yaml:"rate"         mapstructure:"rate"`
 	CacheExpire int    `yaml:"cache_expire" mapstructure:"cache_expire"`
 }
 
 type Config struct {
 	Server ServerConfig `yaml:"server" mapstructure:"server"`
-	Drive  DriveConfig  `yaml:"drive" mapstructure:"drive"`
+	Drive  DriveConfig  `yaml:"drive"  mapstructure:"drive"`
 }
 
-func loadConfig(configPath string) (*Config, error) {
+func Load(configPath string) (*Config, error) {
 	var err error
 
 	if configPath == "" {
@@ -47,11 +48,10 @@ func loadConfig(configPath string) (*Config, error) {
 		if err = godotenv.Load(); err != nil {
 			return nil, err
 		}
-		slog.Debug(".env loaded")
+		slog.Debug("loaded .env", slog.String("path", configPath))
 	}
 
 	v := viper.New()
-
 	v.AddConfigPath(configPath)
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
@@ -60,7 +60,8 @@ func loadConfig(configPath string) (*Config, error) {
 	v.SetDefault("server.port", 8090)
 	v.SetDefault("server.path", "/dav")
 	v.SetDefault("server.user", "user")
-	v.SetDefault("server.pwd", "password")
+	v.SetDefault("server.password", "password")
+	v.SetDefault("server.log_level", "info")
 	v.SetDefault("drive.uid", "")
 	v.SetDefault("drive.cid", "")
 	v.SetDefault("drive.seid", "")
@@ -78,7 +79,6 @@ func loadConfig(configPath string) (*Config, error) {
 	}
 
 	conf := &Config{}
-
 	if err := v.Unmarshal(conf); err != nil {
 		return nil, err
 	}

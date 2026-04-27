@@ -3,9 +3,12 @@ server:
   port: 8090
   path: /dav
   user: user
-  pwd: password
+  password: password
+  log_level: info
 drive:
   uid:
   cid:
   seid:
   kid:
+  rate: 3
+  cache_expire: 1

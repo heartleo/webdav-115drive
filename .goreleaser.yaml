@@ -9,7 +9,7 @@ project_name: webdav-115drive
 # Build configuration
 builds:
   - id: webdav-115drive
-    main: .
+    main: ./cmd/webdav-115drive
     binary: webdav-115drive
 
     # Multi-platform builds

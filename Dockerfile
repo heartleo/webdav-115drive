@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build github.com/heartleo/webdav-115drive
+RUN go build -o webdav-115drive github.com/heartleo/webdav-115drive/cmd/webdav-115drive
 
 FROM alpine:3.22
 

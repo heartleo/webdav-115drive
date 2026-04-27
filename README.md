@@ -4,7 +4,9 @@
 
 **一个 115 网盘 WebDAV 只读服务**
 
-![Go Version](https://img.shields.io/badge/go-1.24+-blue.svg)
+![Go Version](https://img.shields.io/badge/go-1.25+-blue.svg)
+![Go Report](https://goreportcard.com/badge/github.com/heartleo/webdav-115drive)
+![GitHub Release](https://img.shields.io/github/v/release/heartleo/webdav-115drive?include_prereleases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/heartleo/webdav-115drive.svg)](https://hub.docker.com/r/heartleo/webdav-115drive)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -59,7 +61,7 @@ docker-compose up -d
 ```bash
 git clone https://github.com/heartleo/webdav-115drive.git
 cd webdav-115drive
-go build -o webdav-115drive .
+go build -o webdav-115drive ./cmd/webdav-115drive/
 ```
 
 ### 2. ⚙️ 配置
@@ -84,19 +86,20 @@ cp config.yaml.example config.yaml
 
 ### 🔑 环境变量
 
-| 变量名                  | 说明              | 默认值       | 必填 |
-|----------------------|-----------------|-----------|----|
-| `SERVER_HOST`        | 监听主机            | `0.0.0.0` | ❌  |
-| `SERVER_PORT`        | 监听端口            | `8090`    | ❌  |
-| `SERVER_PATH`        | WebDAV 路径       | `/dav`    | ❌  |
-| `SERVER_USER`        | 用户名             | user      | ❌  |
-| `SERVER_PWD`         | 密码              | password  | ❌  |
-| `DRIVE_UID`          | 115 Cookie UID  | -         | ✅  |
-| `DRIVE_CID`          | 115 Cookie CID  | -         | ✅  |
-| `DRIVE_SEID`         | 115 Cookie SEID | -         | ✅  |
-| `DRIVE_KID`          | 115 Cookie KID  | -         | ✅  |
-| `DRIVE_RATE`         | API 请求速率（次/秒）   | `3`       | ❌  |
-| `DRIVE_CACHE_EXPIRE` | 缓存过期时间（分钟）      | `1`       | ❌  |
+| 变量名               | 说明                  | 默认值    | 必填 |
+| -------------------- | --------------------- | --------- | ---- |
+| `SERVER_HOST`        | 监听主机              | `0.0.0.0` | ❌    |
+| `SERVER_PORT`        | 监听端口              | `8090`    | ❌    |
+| `SERVER_PATH`        | WebDAV 路径           | `/dav`    | ❌    |
+| `SERVER_USER`        | 用户名                | user      | ❌    |
+| `SERVER_PASSWORD`    | 密码                  | password  | ❌    |
+| `SERVER_LOG_LEVEL`   | 日志级别              | `info`    | ❌    |
+| `DRIVE_UID`          | 115 Cookie UID        | -         | ✅    |
+| `DRIVE_CID`          | 115 Cookie CID        | -         | ✅    |
+| `DRIVE_SEID`         | 115 Cookie SEID       | -         | ✅    |
+| `DRIVE_KID`          | 115 Cookie KID        | -         | ✅    |
+| `DRIVE_RATE`         | API 请求速率（次/秒） | `3`       | ❌    |
+| `DRIVE_CACHE_EXPIRE` | 缓存过期时间（分钟）  | `1`       | ❌    |
 
 ## 🍪 获取 115 Cookies
 

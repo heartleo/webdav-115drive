@@ -1,4 +1,4 @@
-package main
+package drive
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-func (d *Drive) cacheKeyDir(path string) string {
-	return "dir:" + path
+func (d *Drive) cacheKeyDir(p string) string {
+	return "dir:" + p
 }
 
 func (d *Drive) cacheKeyDownload(pickCode string) string {
@@ -28,26 +28,23 @@ func (d *Drive) checkRateLimit(ctx context.Context, fn func() error) error {
 	return fn()
 }
 
-func (d *Drive) fetchCache(ctx context.Context, key string, fn func() (any, error)) (any, error) {
+// fetchCache does not apply rate limiting; callers are responsible for
+// rate-limiting fn to avoid double-counting tokens.
+func (d *Drive) fetchCache(key string, fn func() (any, error)) (any, error) {
 	if cached, ok := d.cache.Get(key); ok {
-		slog.Debug("cache hit", "key", key)
+		slog.Debug("cache hit", slog.String("key", key))
 		return cached, nil
 	}
 
-	slog.Debug("cache miss", "key", key)
+	slog.Debug("cache miss", slog.String("key", key))
 
-	var result any
-
-	err := d.checkRateLimit(ctx, func() error {
-		var e error
-		result, e = fn()
-		return e
+	result, err, _ := d.group.Do(key, func() (any, error) {
+		return fn()
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	d.cache.Set(key, result, cache.DefaultExpiration)
-
 	return result, nil
 }
