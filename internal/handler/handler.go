@@ -3,10 +3,12 @@ package handler
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -18,6 +20,16 @@ import (
 type Handler struct {
 	FS       drive.FileSystem
 	BasePath string
+}
+
+func New(fs drive.FileSystem, basePath string) (*Handler, error) {
+	if fs == nil {
+		return nil, errors.New("fs is required")
+	}
+	return &Handler{
+		FS:       fs,
+		BasePath: strings.TrimRight(basePath, "/"),
+	}, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -46,8 +58,6 @@ func (h *Handler) handleOptions(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	p, ok := h.cleanPath(r.URL.Path)
 	if !ok {
 		slog.Warn("bad path", slog.String("path", r.URL.Path))
@@ -55,10 +65,8 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info, err := h.FS.Stat(ctx, p)
-	if err != nil {
-		slog.Warn("stat failed", slog.String("path", p), slog.Any("error", err))
-		http.NotFound(w, r)
+	info, ok := h.statOrError(w, r, p)
+	if !ok {
 		return
 	}
 
@@ -102,13 +110,11 @@ func (h *Handler) handleGetHead(w http.ResponseWriter, r *http.Request) {
 
 	if err := cs.ServeContent(w, r, info); err != nil {
 		slog.Error("serve content failed", slog.String("path", p), slog.Any("error", err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	p, ok := h.cleanPath(r.URL.Path)
 	if !ok {
 		slog.Warn("bad path", slog.String("path", r.URL.Path))
@@ -130,17 +136,16 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	root, err := h.FS.Stat(ctx, p)
-	if err != nil {
-		slog.Error("stat failed", slog.String("path", p), slog.Any("error", err))
-		http.NotFound(w, r)
+	root, ok := h.statOrError(w, r, p)
+	if !ok {
 		return
 	}
 
 	var children []*drive.Info
 
 	if root.IsDir && depth == "1" {
-		children, err = h.FS.ReadDir(ctx, p)
+		var err error
+		children, err = h.FS.ReadDir(r.Context(), p)
 		if err != nil {
 			slog.Error("read dir failed", slog.String("path", p), slog.Any("error", err))
 			http.Error(w, "read dir failed", http.StatusInternalServerError)
@@ -161,7 +166,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", `application/xml; charset="utf-8"`)
 	w.WriteHeader(http.StatusMultiStatus)
 	_, _ = w.Write([]byte(webdav.XmlHeader))
-	_ = webdav.XmlEncoder(w).Encode(ms)
+	_ = webdav.XMLEncoder(w).Encode(ms)
 }
 
 func (h *Handler) makeResponse(info *drive.Info) webdav.DavResponse {
@@ -190,6 +195,20 @@ func (h *Handler) makeResponse(info *drive.Info) webdav.DavResponse {
 	}
 }
 
+func (h *Handler) statOrError(w http.ResponseWriter, r *http.Request, p string) (*drive.Info, bool) {
+	info, err := h.FS.Stat(r.Context(), p)
+	if err != nil {
+		if errors.Is(err, drive.ErrNotFound) {
+			http.NotFound(w, r)
+		} else {
+			slog.Error("stat failed", slog.String("path", p), slog.Any("error", err))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
+		return nil, false
+	}
+	return info, true
+}
+
 func (h *Handler) ensureETag(info *drive.Info) string {
 	if info.ETag != "" {
 		return quoteETag(info.ETag)
@@ -216,7 +235,12 @@ func (h *Handler) cleanPath(urlPath string) (string, bool) {
 }
 
 func (h *Handler) toHref(p string, isDir bool) string {
-	href := path.Join("/", h.BasePath, p)
+	joined := path.Join("/", h.BasePath, p)
+	segments := strings.Split(strings.TrimPrefix(joined, "/"), "/")
+	for i, seg := range segments {
+		segments[i] = url.PathEscape(seg)
+	}
+	href := "/" + strings.Join(segments, "/")
 	if isDir && href != "/" {
 		href += "/"
 	}

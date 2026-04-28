@@ -2,7 +2,7 @@ package drive
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -22,7 +22,7 @@ func (d *Drive) checkRateLimit(ctx context.Context, fn func() error) error {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		if err := d.limiter.Wait(ctx); err != nil {
-			return errors.New("rate limit exceeded")
+			return fmt.Errorf("rate limiter wait: %w", err)
 		}
 	}
 	return fn()

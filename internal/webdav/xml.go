@@ -37,6 +37,6 @@ type ResourceType struct {
 	Collection *struct{} `xml:"d:collection,omitempty"`
 }
 
-func XmlEncoder(w io.Writer) *xml.Encoder {
+func XMLEncoder(w io.Writer) *xml.Encoder {
 	return xml.NewEncoder(w)
 }

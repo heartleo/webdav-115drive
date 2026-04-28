@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -50,9 +49,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	h := &handler.Handler{
-		FS:       fs,
-		BasePath: strings.TrimRight(conf.Server.Path, "/"),
+	h, err := handler.New(fs, conf.Server.Path)
+	if err != nil {
+		slog.Error("create handler failed", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	mux := http.NewServeMux()
@@ -62,7 +62,7 @@ func main() {
 		mux.Handle(h.BasePath+"/", h)
 	}
 
-	var httpHandler http.Handler = handler.LogMiddleware(mux)
+	httpHandler := handler.LogMiddleware(mux)
 
 	if conf.Server.User != "" && conf.Server.Password != "" {
 		httpHandler = handler.BasicAuthMiddleware(httpHandler, conf.Server.User, conf.Server.Password)
@@ -74,6 +74,11 @@ func main() {
 		Addr:              addr,
 		Handler:           httpHandler,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		// WriteTimeout intentionally unset: large file downloads via reverse
+		// proxy can take arbitrarily long; rely on client disconnect / context
+		// cancellation instead.
 	}
 
 	slog.Info("webdav serve",
@@ -81,16 +86,22 @@ func main() {
 		slog.String("addr", addr),
 	)
 
+	serverErr := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("webdav serve failed", slog.Any("error", err))
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+
+	select {
+	case err := <-serverErr:
+		slog.Error("webdav serve failed", slog.Any("error", err))
+		os.Exit(1)
+	case <-quit:
+	}
 
 	slog.Info("shutting down")
 

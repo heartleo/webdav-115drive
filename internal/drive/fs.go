@@ -2,9 +2,12 @@ package drive
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 )
+
+var ErrNotFound = errors.New("file not found")
 
 type FileSystem interface {
 	Stat(ctx context.Context, path string) (*Info, error)

@@ -1,6 +1,7 @@
 package drive
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -30,6 +31,32 @@ type Options struct {
 	CacheExpire int
 }
 
+func (o Options) validate() error {
+	missing := make([]string, 0, 4)
+	if o.UID == "" {
+		missing = append(missing, "UID")
+	}
+	if o.CID == "" {
+		missing = append(missing, "CID")
+	}
+	if o.SEID == "" {
+		missing = append(missing, "SEID")
+	}
+	if o.KID == "" {
+		missing = append(missing, "KID")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("drive credentials missing: %s", strings.Join(missing, ", "))
+	}
+	if o.Rate <= 0 {
+		return fmt.Errorf("drive rate must be positive, got %d", o.Rate)
+	}
+	if o.CacheExpire <= 0 {
+		return fmt.Errorf("drive cache_expire must be positive, got %d", o.CacheExpire)
+	}
+	return nil
+}
+
 type Drive struct {
 	client       *driver.Pan115Client
 	reverseProxy *httputil.ReverseProxy
@@ -51,6 +78,10 @@ func (t *jarTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func New(opts Options) (*Drive, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
+
 	credential := &driver.Credential{
 		UID:  opts.UID,
 		CID:  opts.CID,
@@ -91,6 +122,7 @@ func New(opts Options) (*Drive, error) {
 		ModifyResponse: func(resp *http.Response) error {
 			if resp.StatusCode >= http.StatusBadRequest {
 				b, _ := io.ReadAll(resp.Body)
+				resp.Body = io.NopCloser(bytes.NewReader(b))
 				slog.Warn("reverse proxy upstream error",
 					slog.String("status", resp.Status),
 					slog.String("body", string(b)),
@@ -134,7 +166,7 @@ func (d *Drive) Stat(ctx context.Context, p string) (*Info, error) {
 		}
 	}
 
-	return nil, errors.New("file not found")
+	return nil, ErrNotFound
 }
 
 func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
@@ -145,11 +177,16 @@ func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
 		// unnecessary API call and because it may not handle "/" correctly.
 		dirID := "0"
 		if p != "/" {
-			dirResp, err := d.client.DirName2CID(p)
-			if err != nil {
-				return nil, fmt.Errorf("resolve path %q: %w", p, err)
+			if err := d.checkRateLimit(ctx, func() error {
+				dirResp, err := d.client.DirName2CID(p)
+				if err != nil {
+					return fmt.Errorf("resolve path %q: %w", p, err)
+				}
+				dirID = string(dirResp.CategoryID)
+				return nil
+			}); err != nil {
+				return nil, err
 			}
-			dirID = string(dirResp.CategoryID)
 		}
 
 		var files *[]driver.File
@@ -181,7 +218,11 @@ func (d *Drive) ReadDir(ctx context.Context, p string) ([]*Info, error) {
 		return nil, err
 	}
 
-	return result.([]*Info), nil
+	infos, ok := result.([]*Info)
+	if !ok {
+		return nil, fmt.Errorf("cache type mismatch for dir %q", p)
+	}
+	return infos, nil
 }
 
 func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info) error {
@@ -207,7 +248,11 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 		return err
 	}
 
-	du, err := url.Parse(result.(string))
+	rawURL, ok := result.(string)
+	if !ok {
+		return fmt.Errorf("cache type mismatch for pick code %q", info.PickCode)
+	}
+	du, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid download URL: %w", err)
 	}

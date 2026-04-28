@@ -44,8 +44,9 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 
-	if _, err = os.Stat(path.Join(configPath, ".env")); err == nil {
-		if err = godotenv.Load(); err != nil {
+	envFile := path.Join(configPath, ".env")
+	if _, err = os.Stat(envFile); err == nil {
+		if err = godotenv.Load(envFile); err != nil {
 			return nil, err
 		}
 		slog.Debug("loaded .env", slog.String("path", configPath))
@@ -73,7 +74,8 @@ func Load(configPath string) (*Config, error) {
 	v.AutomaticEnv()
 
 	if err = v.ReadInConfig(); err != nil {
-		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
+		var notFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFound) {
 			return nil, err
 		}
 	}
