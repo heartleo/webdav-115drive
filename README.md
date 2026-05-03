@@ -54,6 +54,12 @@ EOF
 docker-compose up -d
 ```
 
+## 下载二进制（macOS / Linux）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/heartleo/webdav-115drive/main/install.sh | sh
+```
+
 ## 编译运行
 
 ### 1. 编译
