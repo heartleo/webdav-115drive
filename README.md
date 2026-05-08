@@ -8,9 +8,16 @@
 ![Go Report](https://goreportcard.com/badge/github.com/heartleo/webdav-115drive)
 ![GitHub Release](https://img.shields.io/github/v/release/heartleo/webdav-115drive?include_prereleases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/heartleo/webdav-115drive.svg)](https://hub.docker.com/r/heartleo/webdav-115drive)
+![GitHub Downloads](https://img.shields.io/github/downloads/heartleo/webdav-115drive/total)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 </div>
+
+## Homebrew 安装
+
+```bash
+brew install heartleo/tap/webdav-115drive
+```
 
 ## Docker 运行
 
