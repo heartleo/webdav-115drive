@@ -57,6 +57,10 @@ func (o Options) validate() error {
 	return nil
 }
 
+type contextKey int
+
+const pickCodeCtxKey contextKey = iota
+
 type Drive struct {
 	client       *driver.Pan115Client
 	reverseProxy *httputil.ReverseProxy
@@ -103,6 +107,9 @@ func New(opts Options) (*Drive, error) {
 		return nil, fmt.Errorf("drive login: %w", err)
 	}
 
+	expire := time.Duration(opts.CacheExpire) * time.Minute
+	c := cache.New(expire, expire*2)
+
 	reverseProxy := &httputil.ReverseProxy{
 		Transport: &jarTransport{
 			tripper: restyClient.GetClient().Transport,
@@ -127,18 +134,22 @@ func New(opts Options) (*Drive, error) {
 					slog.String("status", resp.Status),
 					slog.String("body", string(b)),
 				)
+				if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+					if pc, ok := resp.Request.Context().Value(pickCodeCtxKey).(string); ok && pc != "" {
+						c.Delete("download:" + pc)
+						slog.Debug("evicted stale download URL on 416", slog.String("pickCode", pc))
+					}
+				}
 			}
 			return nil
 		},
 	}
 
-	expire := time.Duration(opts.CacheExpire) * time.Minute
-
 	return &Drive{
 		client:       client,
 		reverseProxy: reverseProxy,
 		limiter:      rate.NewLimiter(rate.Every(time.Second), opts.Rate),
-		cache:        cache.New(expire, expire*2),
+		cache:        c,
 	}, nil
 }
 
@@ -265,6 +276,7 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 		slog.String("url", du.String()),
 	)
 
+	r = r.WithContext(context.WithValue(r.Context(), pickCodeCtxKey, info.PickCode))
 	r.URL = du
 	r.Host = du.Host
 	d.reverseProxy.ServeHTTP(w, r)
