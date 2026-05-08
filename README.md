@@ -6,20 +6,42 @@
 
 ![Go Version](https://img.shields.io/badge/go-1.25+-blue.svg)
 ![Go Report](https://goreportcard.com/badge/github.com/heartleo/webdav-115drive)
-![GitHub Release](https://img.shields.io/github/v/release/heartleo/webdav-115drive?include_prereleases)
+![GitHub Release](https://img.shields.io/github/v/release/heartleo/webdav-115drive)
 [![Docker Pulls](https://img.shields.io/docker/pulls/heartleo/webdav-115drive.svg)](https://hub.docker.com/r/heartleo/webdav-115drive)
 ![GitHub Downloads](https://img.shields.io/github/downloads/heartleo/webdav-115drive/total)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 </div>
 
-## Homebrew 安装
+## 快速安装
+
+**Homebrew**（macOS / Linux）：
 
 ```bash
 brew install heartleo/tap/webdav-115drive
 ```
 
-## Docker 运行
+**curl**（macOS / Linux）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/heartleo/webdav-115drive/main/install.sh | sh
+```
+
+**Go install**（需要 Go 1.25+）：
+
+```bash
+go install github.com/heartleo/webdav-115drive/cmd/webdav-115drive@latest
+```
+
+**源码编译：**
+
+```bash
+git clone https://github.com/heartleo/webdav-115drive.git
+cd webdav-115drive
+go build -o webdav-115drive ./cmd/webdav-115drive
+```
+
+**Docker：**
 
 ```bash
 docker run --rm -d \
@@ -29,23 +51,21 @@ docker run --rm -d \
   -e DRIVE_CID=115-cid \
   -e DRIVE_SEID=115-seid \
   -e DRIVE_KID=115-kid \
-  heartleo/webdav-115drive
+  ghcr.io/heartleo/webdav-115drive
 ```
 
-## Docker Compose 运行
+**Docker Compose：**
 
-```bash
-cat > docker-compose.yml <<EOF
+```yaml
 services:
   webdav:
     container_name: webdav-115drive
-    image: "heartleo/webdav-115drive:latest"
+    image: "ghcr.io/heartleo/webdav-115drive:latest"
     ports:
       - "8090:8090"
     env_file:
       - .env
     restart: unless-stopped
-EOF
 ```
 
 ```bash
@@ -55,29 +75,11 @@ DRIVE_CID=115-cid
 DRIVE_SEID=115-seid
 DRIVE_KID=115-kid
 EOF
+
+docker compose up -d
 ```
 
-```bash
-docker-compose up -d
-```
-
-## 下载二进制（macOS / Linux）
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/heartleo/webdav-115drive/main/install.sh | sh
-```
-
-## 编译运行
-
-### 1. 编译
-
-```bash
-git clone https://github.com/heartleo/webdav-115drive.git
-cd webdav-115drive
-go build -o webdav-115drive ./cmd/webdav-115drive/
-```
-
-### 2. 配置
+## 配置
 
 **使用 `.env` 文件**
 
@@ -91,13 +93,13 @@ cp .env.example .env
 cp config.yaml.example config.yaml
 ```
 
-### 3. 运行
+## 运行
 
 ```bash
 ./webdav-115drive
 ```
 
-### 环境变量
+## 环境变量
 
 | 变量名               | 说明                  | 默认值    | 必填 |
 | -------------------- | --------------------- | --------- | ---- |
@@ -125,8 +127,6 @@ cp config.yaml.example config.yaml
     - `CID` → `DRIVE_CID`
     - `SEID` → `DRIVE_SEID`
     - `KID` → `DRIVE_KID`
-
----
 
 ## Star History
 
