@@ -46,3 +46,4 @@ else
 fi
 
 echo "Installed to ${INSTALL_DIR}/${BIN}"
+${INSTALL_DIR}/${BIN} --version

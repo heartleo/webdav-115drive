@@ -21,7 +21,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w
+      - -s -w -X github.com/heartleo/webdav-115drive.Version={{.Version}} -X github.com/heartleo/webdav-115drive.Commit={{.Commit}} -X github.com/heartleo/webdav-115drive.Date={{.Date}}
     env:
       - CGO_ENABLED=0
 
@@ -97,7 +97,7 @@ brews:
     install: |
       bin.install "webdav-115drive"
     test: |
-      assert_path_exists bin/"webdav-115drive"
+      system "#{bin}/webdav-115drive", "--version"
 
 # GitHub Release configuration
 release:
