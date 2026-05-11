@@ -20,6 +20,15 @@ builds:
     goarch:
       - amd64
       - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
     ldflags:
       - -s -w -X github.com/heartleo/webdav-115drive.Version={{.Version}} -X github.com/heartleo/webdav-115drive.Commit={{.Commit}} -X github.com/heartleo/webdav-115drive.Date={{.Date}}
     env:
@@ -62,6 +71,8 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+      - linux/arm/v6
+      - linux/arm/v7
     images:
       - "heartleo/webdav-115drive"
       - "ghcr.io/heartleo/webdav-115drive"
