@@ -1,4 +1,43 @@
-.*
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# IDE / editor
+.idea/
+.vscode/
+.claude/
+.editorconfig
+
+# CI / tooling config
+.github/
+.golangci.yml
+.goreleaser.yaml
+
+# Docs / assets (not needed at build time)
+docs/
+assets/
 *.md
-**.*exe
+LICENSE
+
+# Local config / secrets
+.env
+.env.*
+config.yaml
+!config.yaml.example
+!.env.example
+
+# Build artifacts
+webdav-115drive
+webdav-115drive.exe
+*.exe
+*.test
+*.out
+dist/
+
+# Compose / scripts
+docker-compose*.yml
+Dockerfile*
+install.sh
+Makefile
 *.sh
