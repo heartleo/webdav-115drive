@@ -700,14 +700,6 @@ td:last-child {
   letter-spacing: 0.04em;
 }
 .footer .container { display: block; text-align: center; position: relative; }
-.footer .container::after {
-  content: "EOF";
-  color: var(--green);
-  letter-spacing: 0.12em;
-  position: absolute;
-  right: 2rem;
-  top: 0;
-}
 .footer a {
   color: var(--fg-mute);
   border-bottom: 1px dashed var(--fg-mute);
@@ -838,7 +830,7 @@ td:last-child {
                 <div class="feature-card">
                     <span class="icon">🐳</span>
                     <h3>多平台 Docker</h3>
-                    <p>提供 linux/amd64 与 linux/arm64 镜像，NAS 设备（群晖、威联通）开箱即用</p>
+                    <p>提供多平台镜像，NAS（群晖、威联通）、树莓派、ARM 软路由开箱即用</p>
                 </div>
             </div>
         </section>
@@ -1124,6 +1116,19 @@ DRIVE_KID=你的KID</pre>
         sections.forEach(function (section) {
             observer.observe(section);
         });
+
+        var lastSection = sections[sections.length - 1];
+        window.addEventListener('scroll', function () {
+            var rect = lastSection.getBoundingClientRect();
+            var trigger = window.innerHeight * 0.8;
+            var atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+            if (rect.top < trigger || atBottom) {
+                var lastId = lastSection.getAttribute('id');
+                navLinks.forEach(function (link) {
+                    link.classList.toggle('active', link.getAttribute('href') === '#' + lastId);
+                });
+            }
+        }, { passive: true });
     })();
 </script>
 
