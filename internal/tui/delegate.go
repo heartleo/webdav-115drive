@@ -26,7 +26,6 @@ var (
 
 	rowCursorStyle = lipgloss.NewStyle().Bold(true).Foreground(cursorFg)
 	rowDirStyle    = lipgloss.NewStyle().Foreground(dirFg)
-	rowDimStyle    = lipgloss.NewStyle().Foreground(dimFg)
 	rowFileStyle   = lipgloss.NewStyle()
 )
 
@@ -84,7 +83,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		body = rowFileStyle.Render(body)
 	}
 
-	fmt.Fprint(w, body)
+	_, _ = fmt.Fprint(w, body)
 }
 
 // visualWidth returns the on-screen cell width of s. ASCII is 1 cell; a

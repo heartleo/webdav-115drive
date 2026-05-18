@@ -271,7 +271,6 @@ func overlay(content string, w, h int) string {
 var (
 	columnHeaderStyle = lipgloss.NewStyle().Foreground(dimFg)
 	dividerStyle      = lipgloss.NewStyle().Foreground(dimFg)
-	hintStyle         = lipgloss.NewStyle().Foreground(dimFg).Padding(0, 1)
 )
 
 func columnHeader(width int, sort sortMode) string {
