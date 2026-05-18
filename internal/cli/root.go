@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/heartleo/webdav-115drive/internal/config"
 	"github.com/heartleo/webdav-115drive/internal/drive"
 	"github.com/heartleo/webdav-115drive/internal/handler"
+	"github.com/heartleo/webdav-115drive/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -41,6 +43,14 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+var tuiCmd = &cobra.Command{
+	Use:   "tui",
+	Short: "Browse the configured 115 Drive in an interactive terminal UI",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runTUI()
+	},
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -56,6 +66,35 @@ func init() {
 		f.Shorthand = "v"
 	}
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(tuiCmd)
+}
+
+func runTUI() error {
+	conf, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	// Silence slog: TUI takes over the alt-screen and stdout writes would
+	// corrupt the rendering. Errors are surfaced via the model + return value.
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	fs, err := drive.New(drive.Options{
+		UID:         conf.Drive.UID,
+		CID:         conf.Drive.CID,
+		SEID:        conf.Drive.SEID,
+		KID:         conf.Drive.KID,
+		Rate:        conf.Drive.Rate,
+		CacheExpire: conf.Drive.CacheExpire,
+	})
+	if err != nil {
+		return fmt.Errorf("create drive: %w", err)
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	return tui.Run(ctx, fs)
 }
 
 func runServe() error {

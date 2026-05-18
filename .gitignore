@@ -40,4 +40,5 @@ CLAUDE.md
 .vscode/
 .idea/
 .claude/
+.serena/
 *.swp
