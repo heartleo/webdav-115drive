@@ -2,10 +2,9 @@
   <img src="assets/icon.svg" alt="webdav-115drive" width="200" style="display:block;margin:0">
   <h1 style="margin:0;">webdav-115drive</h1>
 
-**一个 115 网盘 WebDAV 只读服务**
+**轻量高性能 115 网盘 WebDAV 服务**
 
 ![Go Version](https://img.shields.io/badge/go-1.25+-blue.svg)
-![Go Report](https://goreportcard.com/badge/github.com/heartleo/webdav-115drive)
 ![GitHub Release](https://img.shields.io/github/v/release/heartleo/webdav-115drive)
 [![Docker Pulls](https://img.shields.io/docker/pulls/heartleo/webdav-115drive.svg)](https://hub.docker.com/r/heartleo/webdav-115drive)
 ![GitHub Downloads](https://img.shields.io/github/downloads/heartleo/webdav-115drive/total)
@@ -21,6 +20,12 @@
 brew install heartleo/tap/webdav-115drive
 ```
 
+**winget**（Windows）：
+
+```powershell
+winget install heartleo.webdav-115drive
+```
+
 **curl**（macOS / Linux）：
 
 ```bash
@@ -33,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/heartleo/webdav-115drive/main/insta
 go install github.com/heartleo/webdav-115drive/cmd/webdav-115drive@latest
 ```
 
-**源码编译：**
+**源码构建：**
 
 ```bash
 git clone https://github.com/heartleo/webdav-115drive.git
@@ -99,50 +104,23 @@ cp config.yaml.example config.yaml
 ./webdav-115drive
 ```
 
-## 交互式 TUI
-
-`webdav-115drive tui` 启动只读的终端浏览器，复用 `--config` 与 `drive.*` 配置。
-
-```bash
-./webdav-115drive tui --config ./
-```
-
-按键：
-
-| 按键 | 操作 |
-| --- | --- |
-| `↑`/`k`、`↓`/`j` | 移动光标 |
-| `PgUp` / `PgDn` | 翻页 |
-| `g` / `G` | 跳到顶部 / 底部 |
-| `↵` / `l` / `→` | 进入目录 |
-| `⌫` / `h` / `←` | 返回上级 |
-| `/` | 当前目录过滤 |
-| `s` | 切换排序（名称 / 大小 / 修改时间） |
-| `i` | 文件信息弹窗 |
-| `?` | 帮助 |
-| `q` / `Ctrl+C` | 退出 |
-
-TUI 仅支持浏览：不下载、不复制链接、不写入。
-
 ## 环境变量
 
-| 变量名               | 说明                  | 默认值    | 必填 |
-| -------------------- | --------------------- | --------- | ---- |
-| `SERVER_HOST`        | 监听主机              | `0.0.0.0` | ❌    |
-| `SERVER_PORT`        | 监听端口              | `8090`    | ❌    |
-| `SERVER_PATH`        | WebDAV 路径           | `/dav`    | ❌    |
-| `SERVER_USER`        | 用户名                | user      | ❌    |
-| `SERVER_PASSWORD`    | 密码                  | password  | ❌    |
-| `SERVER_LOG_LEVEL`   | 日志级别              | `info`    | ❌    |
-| `DRIVE_UID`          | 115 Cookie UID        | -         | ✅    |
-| `DRIVE_CID`          | 115 Cookie CID        | -         | ✅    |
-| `DRIVE_SEID`         | 115 Cookie SEID       | -         | ✅    |
-| `DRIVE_KID`          | 115 Cookie KID        | -         | ✅    |
-| `DRIVE_RATE`         | API 请求速率（次/秒） | `3`       | ❌    |
-| `DRIVE_CACHE_EXPIRE` | 缓存过期时间（分钟）  | `1`       | ❌    |
-| `DRIVE_DOWNLOAD_STRATEGY` | 下载策略：`redirect`（客户端直连）或 `proxy`（服务端转发） | `redirect` | ❌ |
-
-`redirect` 会将 WebDAV 客户端重定向到 115 CDN，并使用客户端原始 User-Agent 获取下载地址。若客户端不支持下载重定向，可改用 `proxy` 保留服务端转发模式。
+| 变量名                    | 说明                           | 默认值     | 必填 |
+| ------------------------- | ------------------------------ | ---------- | ---- |
+| `SERVER_HOST`             | 监听主机                       | `0.0.0.0`  | ❌    |
+| `SERVER_PORT`             | 监听端口                       | `8090`     | ❌    |
+| `SERVER_PATH`             | WebDAV 路径                    | `/dav`     | ❌    |
+| `SERVER_USER`             | 用户名                         | user       | ❌    |
+| `SERVER_PASSWORD`         | 密码                           | password   | ❌    |
+| `SERVER_LOG_LEVEL`        | 日志级别                       | `info`     | ❌    |
+| `DRIVE_UID`               | 115 Cookie UID                 | -          | ✅    |
+| `DRIVE_CID`               | 115 Cookie CID                 | -          | ✅    |
+| `DRIVE_SEID`              | 115 Cookie SEID                | -          | ✅    |
+| `DRIVE_KID`               | 115 Cookie KID                 | -          | ✅    |
+| `DRIVE_RATE`              | API 请求速率（次/秒）          | `3`        | ❌    |
+| `DRIVE_CACHE_EXPIRE`      | 缓存过期时间（分钟）           | `1`        | ❌    |
+| `DRIVE_DOWNLOAD_STRATEGY` | 下载模式：`redirect` / `proxy` | `redirect` | ❌    |
 
 ## 获取 115 Cookies
 
@@ -155,13 +133,3 @@ TUI 仅支持浏览：不下载、不复制链接、不写入。
     - `CID` → `DRIVE_CID`
     - `SEID` → `DRIVE_SEID`
     - `KID` → `DRIVE_KID`
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=heartleo/webdav-115drive&type=Date)](https://star-history.com/#heartleo/webdav-115drive&Date)
-
-<div align="center">
-
-Made with ❤️ by [heartleo](https://github.com/heartleo)
-
-</div>

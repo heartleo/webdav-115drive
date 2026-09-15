@@ -111,6 +111,30 @@ brews:
     test: |
       system "#{bin}/webdav-115drive", "--version"
 
+# WinGet manifest configuration
+winget:
+  - name: webdav-115drive
+    package_identifier: heartleo.webdav-115drive
+    publisher: heartleo
+    publisher_url: "https://github.com/heartleo"
+    homepage: "https://github.com/heartleo/webdav-115drive"
+    short_description: "A read-only WebDAV proxy for 115 Drive"
+    license: MIT
+    tags:
+      - 115-drive
+      - webdav
+      - cli
+    repository:
+      owner: heartleo
+      name: winget-pkgs
+      token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+
 # GitHub Release configuration
 release:
   github:
