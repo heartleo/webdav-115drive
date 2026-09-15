@@ -80,12 +80,13 @@ func runTUI() error {
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	fs, err := drive.New(drive.Options{
-		UID:         conf.Drive.UID,
-		CID:         conf.Drive.CID,
-		SEID:        conf.Drive.SEID,
-		KID:         conf.Drive.KID,
-		Rate:        conf.Drive.Rate,
-		CacheExpire: conf.Drive.CacheExpire,
+		UID:              conf.Drive.UID,
+		CID:              conf.Drive.CID,
+		SEID:             conf.Drive.SEID,
+		KID:              conf.Drive.KID,
+		Rate:             conf.Drive.Rate,
+		CacheExpire:      conf.Drive.CacheExpire,
+		DownloadStrategy: conf.Drive.DownloadStrategy,
 	})
 	if err != nil {
 		return fmt.Errorf("create drive: %w", err)
@@ -112,12 +113,13 @@ func runServe() error {
 	})))
 
 	fs, err := drive.New(drive.Options{
-		UID:         conf.Drive.UID,
-		CID:         conf.Drive.CID,
-		SEID:        conf.Drive.SEID,
-		KID:         conf.Drive.KID,
-		Rate:        conf.Drive.Rate,
-		CacheExpire: conf.Drive.CacheExpire,
+		UID:              conf.Drive.UID,
+		CID:              conf.Drive.CID,
+		SEID:             conf.Drive.SEID,
+		KID:              conf.Drive.KID,
+		Rate:             conf.Drive.Rate,
+		CacheExpire:      conf.Drive.CacheExpire,
+		DownloadStrategy: conf.Drive.DownloadStrategy,
 	})
 	if err != nil {
 		return fmt.Errorf("create drive: %w", err)

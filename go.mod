@@ -3,7 +3,7 @@ module github.com/heartleo/webdav-115drive
 go 1.25.9
 
 require (
-	github.com/SheltonZhu/115driver v1.3.2
+	github.com/SheltonZhu/115driver v1.3.5
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0

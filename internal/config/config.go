@@ -21,12 +21,13 @@ type ServerConfig struct {
 }
 
 type DriveConfig struct {
-	UID         string `yaml:"uid"          mapstructure:"uid"`
-	CID         string `yaml:"cid"          mapstructure:"cid"`
-	SEID        string `yaml:"seid"         mapstructure:"seid"`
-	KID         string `yaml:"kid"          mapstructure:"kid"`
-	Rate        int    `yaml:"rate"         mapstructure:"rate"`
-	CacheExpire int    `yaml:"cache_expire" mapstructure:"cache_expire"`
+	UID              string `yaml:"uid"               mapstructure:"uid"`
+	CID              string `yaml:"cid"               mapstructure:"cid"`
+	SEID             string `yaml:"seid"              mapstructure:"seid"`
+	KID              string `yaml:"kid"               mapstructure:"kid"`
+	Rate             int    `yaml:"rate"              mapstructure:"rate"`
+	CacheExpire      int    `yaml:"cache_expire"      mapstructure:"cache_expire"`
+	DownloadStrategy string `yaml:"download_strategy" mapstructure:"download_strategy"`
 }
 
 type Config struct {
@@ -69,6 +70,7 @@ func Load(configPath string) (*Config, error) {
 	v.SetDefault("drive.kid", "")
 	v.SetDefault("drive.rate", 3)
 	v.SetDefault("drive.cache_expire", 1)
+	v.SetDefault("drive.download_strategy", "redirect")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()

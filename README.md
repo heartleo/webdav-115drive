@@ -140,6 +140,9 @@ TUI 仅支持浏览：不下载、不复制链接、不写入。
 | `DRIVE_KID`          | 115 Cookie KID        | -         | ✅    |
 | `DRIVE_RATE`         | API 请求速率（次/秒） | `3`       | ❌    |
 | `DRIVE_CACHE_EXPIRE` | 缓存过期时间（分钟）  | `1`       | ❌    |
+| `DRIVE_DOWNLOAD_STRATEGY` | 下载策略：`redirect`（客户端直连）或 `proxy`（服务端转发） | `redirect` | ❌ |
+
+`redirect` 会将 WebDAV 客户端重定向到 115 CDN，并使用客户端原始 User-Agent 获取下载地址。若客户端不支持下载重定向，可改用 `proxy` 保留服务端转发模式。
 
 ## 获取 115 Cookies
 

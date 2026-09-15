@@ -23,13 +23,19 @@ import (
 )
 
 type Options struct {
-	UID         string
-	CID         string
-	SEID        string
-	KID         string
-	Rate        int
-	CacheExpire int
+	UID              string
+	CID              string
+	SEID             string
+	KID              string
+	Rate             int
+	CacheExpire      int
+	DownloadStrategy string
 }
+
+const (
+	downloadStrategyRedirect = "redirect"
+	downloadStrategyProxy    = "proxy"
+)
 
 func (o Options) validate() error {
 	missing := make([]string, 0, 4)
@@ -54,6 +60,11 @@ func (o Options) validate() error {
 	if o.CacheExpire <= 0 {
 		return fmt.Errorf("drive cache_expire must be positive, got %d", o.CacheExpire)
 	}
+	switch o.DownloadStrategy {
+	case downloadStrategyRedirect, downloadStrategyProxy:
+	default:
+		return fmt.Errorf("unknown download strategy: %s", o.DownloadStrategy)
+	}
 	return nil
 }
 
@@ -62,11 +73,13 @@ type contextKey int
 const pickCodeCtxKey contextKey = iota
 
 type Drive struct {
-	client       *driver.Pan115Client
-	reverseProxy *httputil.ReverseProxy
-	limiter      *rate.Limiter
-	cache        *cache.Cache
-	group        singleflight.Group
+	client           *driver.Pan115Client
+	reverseProxy     *httputil.ReverseProxy
+	limiter          *rate.Limiter
+	cache            *cache.Cache
+	group            singleflight.Group
+	downloadStrategy string
+	downloadURL      func(pickCode, userAgent string) (string, error)
 }
 
 type jarTransport struct {
@@ -82,6 +95,9 @@ func (t *jarTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func New(opts Options) (*Drive, error) {
+	if opts.DownloadStrategy == "" {
+		opts.DownloadStrategy = downloadStrategyRedirect
+	}
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -146,10 +162,18 @@ func New(opts Options) (*Drive, error) {
 	}
 
 	return &Drive{
-		client:       client,
-		reverseProxy: reverseProxy,
-		limiter:      rate.NewLimiter(rate.Every(time.Second), opts.Rate),
-		cache:        c,
+		client:           client,
+		reverseProxy:     reverseProxy,
+		limiter:          rate.NewLimiter(rate.Every(time.Second), opts.Rate),
+		cache:            c,
+		downloadStrategy: opts.DownloadStrategy,
+		downloadURL: func(pickCode, userAgent string) (string, error) {
+			dl, err := client.DownloadWithUA(pickCode, userAgent)
+			if err != nil {
+				return "", err
+			}
+			return dl.Url.Url, nil
+		},
 	}, nil
 }
 
@@ -241,28 +265,67 @@ func (d *Drive) ServeContent(w http.ResponseWriter, r *http.Request, info *Info)
 		return errors.New("pick code not found")
 	}
 
-	result, err := d.fetchCache(d.cacheKeyDownload(info.PickCode), func() (any, error) {
-		var rawURL string
-		if err := d.checkRateLimit(r.Context(), func() error {
-			dl, err := d.client.Download(info.PickCode)
-			if err != nil {
-				return fmt.Errorf("download: %w", err)
-			}
-			rawURL = dl.Url.Url
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-		return rawURL, nil
-	})
+	var (
+		rawURL string
+		err    error
+	)
+	switch d.downloadStrategy {
+	case downloadStrategyRedirect:
+		rawURL, err = d.getDownloadURL(r.Context(), info.PickCode, r.Header.Get("User-Agent"))
+	case downloadStrategyProxy:
+		rawURL, err = d.getCachedDownloadURL(r.Context(), info.PickCode, driver.UA115Browser)
+	default:
+		return fmt.Errorf("unknown download strategy: %s", d.downloadStrategy)
+	}
 	if err != nil {
 		return err
 	}
 
+	if d.downloadStrategy == downloadStrategyRedirect {
+		slog.Debug("redirect content",
+			slog.String("path", info.Path),
+			slog.String("name", info.Name),
+			slog.String("pickCode", info.PickCode),
+			slog.String("userAgent", r.Header.Get("User-Agent")),
+		)
+		http.Redirect(w, r, rawURL, http.StatusFound)
+		return nil
+	}
+
+	return d.proxyDownload(w, r, info, rawURL)
+}
+
+func (d *Drive) getDownloadURL(ctx context.Context, pickCode, userAgent string) (string, error) {
+	var rawURL string
+	if err := d.checkRateLimit(ctx, func() error {
+		var err error
+		rawURL, err = d.downloadURL(pickCode, userAgent)
+		if err != nil {
+			return fmt.Errorf("download: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	return rawURL, nil
+}
+
+func (d *Drive) getCachedDownloadURL(ctx context.Context, pickCode, userAgent string) (string, error) {
+	result, err := d.fetchCache(d.cacheKeyDownload(pickCode), func() (any, error) {
+		return d.getDownloadURL(ctx, pickCode, userAgent)
+	})
+	if err != nil {
+		return "", err
+	}
+
 	rawURL, ok := result.(string)
 	if !ok {
-		return fmt.Errorf("cache type mismatch for pick code %q", info.PickCode)
+		return "", fmt.Errorf("cache type mismatch for pick code %q", pickCode)
 	}
+	return rawURL, nil
+}
+
+func (d *Drive) proxyDownload(w http.ResponseWriter, r *http.Request, info *Info, rawURL string) error {
 	du, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid download URL: %w", err)
