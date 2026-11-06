@@ -117,6 +117,7 @@ winget:
     package_identifier: heartleo.webdav-115drive
     publisher: heartleo
     publisher_url: "https://github.com/heartleo"
+    privacy_url: "https://github.com/heartleo/webdav-115drive/blob/main/PRIVACY.md"
     homepage: "https://github.com/heartleo/webdav-115drive"
     short_description: "A read-only WebDAV proxy for 115 Drive"
     license: MIT
